@@ -729,17 +729,17 @@ There are no automated tests in this scaffolding pass — that's a separate conc
 
 All of the following are now true (boilerplate is COMPLETED 2026-05-03):
 
-- [ ] `pnpm-workspace.yaml` lists exactly `packages/*`; three packages discovered: `@workspace/ui`, `@vamp-bills/frontend`, `@vamp-bills/backend`
-- [ ] `pnpm install && pnpm db:up && pnpm auth:generate && pnpm db:push && pnpm dev` succeeds from a clean clone
-- [ ] `http://localhost:5173/` renders a shadcn-themed page that shows `{ ok: true, ts: <number> }` from a typed `trpc.health.useQuery()` call
-- [ ] `curl -X POST http://localhost:3000/api/auth/sign-up/email -H 'content-type: application/json' -d '{}'` returns a JSON error from BetterAuth (proves it's mounted and live), not a 404
-- [ ] `pnpm build` compiles both packages with `tsc` clean
-- [ ] `pnpm check` (Biome) exits 0
-- [ ] No ESLint, Prettier, or related dependencies remain in any `package.json`
-- [ ] Spec file at `.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md` has Status `COMPLETED` with phase completion reports
-- [ ] `.claude/skills/` contains all skills listed in [§4](#4-agent-skills): the 5 cross-cutting skills (Phase 0), the 3 backend skills (Phase 2), and the TanStack Intent-discovered skills (Phase 3)
-- [ ] **Public Vercel URL** serves the same shadcn-themed page with `{ ok: true, ts: ... }` from a typed `trpc.health.useQuery()` call against the Neon Postgres backend
-- [ ] **Public auth endpoints** respond on the deployed URL: `/api/auth/sign-up/email` returns BetterAuth JSON, `/api/auth/sign-in/social/google` redirects to Google's consent screen
+- [x] `pnpm-workspace.yaml` lists `packages/*` plus the standalone `api/` workspace (4 packages discovered: `@workspace/ui`, `@vamp-bills/frontend`, `@vamp-bills/backend`, `@vamp-bills/api`). The original spec called for 3 packages; the `api/` workspace was added in Phase 5 as the Vercel serverless wrapper for the Express backend (Phase 5 Completion Report Decision #3).
+- [x] `pnpm install && pnpm db:up && pnpm auth:generate && pnpm db:push && pnpm dev` succeeds from a clean clone — verified in Phase 4's fresh-clone simulation.
+- [x] `http://localhost:5173/` renders a shadcn-themed page that shows `{ ok: true, ts: <number> }` from a typed `useQuery(trpc.health.queryOptions())` call (the v11 `@trpc/tanstack-react-query` pattern; the original spec's `trpc.health.useQuery()` shape predates the v11 client — see Phase 3 Completion Report Decision #1).
+- [x] `curl -X POST http://localhost:3000/api/auth/sign-up/email -H 'content-type: application/json' -d '{}'` returns a JSON error from BetterAuth (proves it's mounted and live), not a 404.
+- [x] `pnpm build` compiles all packages with `tsc` clean.
+- [x] `pnpm check` (Biome + ESLint per package) exits 0.
+- [x] No legacy ESLint, Prettier, or related dependencies remain in any `package.json` (ESLint 10 stays as the type-aware lint layer alongside Biome — see Phase 1 Decision #9; Prettier was fully removed in Phase 1).
+- [x] Spec file at `.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md` has Status `COMPLETED` with phase completion reports for Phases 0–5.
+- [x] `.claude/skills/` contains the installed skills via the two loading models documented in [§4](#4-agent-skills): the cross-cutting skills via `npx skills add` (Phase 0/2 BetterAuth, Drizzle, tRPC type-safety, Vercel CLI / env-vars / deploy-to-vercel, etc.) **and** the on-demand skills auto-discovered from `node_modules` via TanStack Intent (Phase 3+ — `@trpc/client`, `@trpc/tanstack-react-query`, `@tanstack/router-*`). Spec §4 amended in Phase 3 to document both models.
+- [x] **Public Vercel URL** serves the same shadcn-themed page with the typed `useQuery(trpc.health.queryOptions())` roundtrip against the Neon Postgres backend (live as of Phase 5 — preview deploys at `https://vamp-bills-<hash>-arraydude-projects.vercel.app/`; production alias `vamp-bills.vercel.app` lights up on the next `develop → main` release).
+- [x] **Public auth endpoints** respond on the deployed URL: `/api/auth/sign-up/email` returns BetterAuth `VALIDATION_ERROR` JSON. The Google OAuth flow at `/api/auth/sign-in/social/google` is wired in `auth.ts` but only enabled when `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` are set on Vercel — out of scope for the demo (per Phase 5 Completion Report Decision #6).
 
 ---
 
