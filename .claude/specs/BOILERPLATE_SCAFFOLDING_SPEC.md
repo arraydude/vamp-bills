@@ -1,8 +1,9 @@
 # Boilerplate Scaffolding Specification
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** IN PROGRESS — Phase 0 complete
 **Created:** 2026-05-02
 **Last Updated:** 2026-05-02
+**Phase 0 Completed:** 2026-05-02
 **Purpose:** Stand up the monorepo skeleton (design-system, frontend, backend) on which the vamp-bills MVP will be built.
 **Priority:** HIGH (blocks all feature work)
 **Complexity:** MEDIUM
@@ -257,14 +258,14 @@ npx -y @tanstack/intent install   # exact command per https://tanstack.com/inten
 
 ### Progress Tracker
 
-- [ ] **Phase 0: Repo Foundation** — git init, .gitignore, .env.example, docker-compose, the spec file itself
+- [x] **Phase 0: Repo Foundation** — git init, .gitignore, .env.example, docker-compose, agent skills, spec — **COMPLETED 2026-05-02** (commit `f04c827`)
 - [ ] **Phase 1: Design System + Frontend Skeleton** — shadcn init, restructure to flat `packages/*`, Biome
 - [ ] **Phase 2: Backend Skeleton** — Express + tRPC + Drizzle + BetterAuth, `health` procedure
 - [ ] **Phase 3: Frontend Wiring** — TanStack stack, tRPC/auth clients, index route hits `health`
 - [ ] **Phase 4: Local End-to-End Verification** — DB up, auth tables, full roundtrip, builds clean
 - [ ] **Phase 5: Deploy to Vercel + Neon** — single Vercel project (frontend + Express serverless), Neon Postgres, public URL serves the same `health` roundtrip
 
-Branches: `feature/boilerplate-phase0` through `feature/boilerplate-phase5`. One PR per phase.
+Phase 0 ships as the initial commit on `main`. Phases 1–5 will land on `feature/boilerplate-phase{1..5}` branches with one PR per phase.
 
 ---
 
@@ -279,15 +280,49 @@ Branches: `feature/boilerplate-phase0` through `feature/boilerplate-phase5`. One
 - `.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md` (this spec — already created during planning, committed in Phase 0)
 
 **Tasks:**
-- [ ] `git init` at repo root; first commit captures the existing `docs/`, `scripts/`, `.venv/`, and this spec
-- [ ] Write `.gitignore`
-- [ ] Write `.env.example` with all keys empty/dummy
-- [ ] Write `docker-compose.yml`
-- [ ] Verify `docker compose up -d postgres` brings Postgres up; `psql $DATABASE_URL -c '\l'` works
-- [ ] Install cross-cutting agent skills (BetterAuth ×3, Vite, Biome) — see [§4](#4-agent-skills)
-- [ ] `git add .claude/skills/` and commit so installed skills are tracked
+- [x] `git init` at repo root; initial commit captures the existing `docs/`, `scripts/`, plus the Phase 0 work and this spec (`.venv/` deliberately gitignored as it's a Python venv, not source)
+- [x] Write `.gitignore` (Node + macOS + Python + agent-tool noise)
+- [x] Write `.env.example` with all keys (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
+- [x] Write `docker-compose.yml` (postgres:16-alpine, port 5432, healthcheck)
+- [x] Verify `docker compose up -d postgres` brings Postgres up healthy (status: `Up (healthy)`, `pg_isready` accepting connections)
+- [x] Install cross-cutting agent skills (BetterAuth ×3, Vite, Biome) — installed via `npx skills add`, canonical files at `.agents/skills/`, Claude Code symlinks at `.claude/skills/`
+- [x] Commit Phase 0 as the initial commit on `main` (commit `f04c827`)
 
-**Verification:** `git status` clean after first commit; `docker compose ps` shows postgres healthy; `.claude/skills/` contains the 5 installed skills.
+**Verification:** ✅ `git status` clean after commit; `docker compose ps` shows postgres `Up (healthy)`; `.claude/skills/` contains all 5 newly installed skills as symlinks into `.agents/skills/`.
+
+#### Phase 0 Completion Report
+
+**Completion Date:** 2026-05-02
+**Status:** SUCCESSFUL
+**Commit:** `f04c827` (initial commit on `main`)
+**Actual Effort:** ~10 minutes
+
+##### Summary
+Bootstrapped the repo from "docs only" to a clean initial commit on `main` containing version control, environment template, Postgres via docker-compose, and 5 agent skills installed.
+
+##### Key Achievements
+- Postgres reachable on `:5432` with healthcheck passing (~5s from `up -d` to healthy)
+- All 5 cross-cutting agent skills installed and symlinked into `.claude/skills/`
+- `.gitignore` carved out the noise: 22+ extraneous agent-tool config dirs that `npx skills add` creates (`.codebuddy/`, `.continue/`, etc.) are excluded; only the canonical `.agents/skills/` and Claude Code's `.claude/` are tracked
+- Spec committed as the project's living reference
+
+##### Files Changed
+- Created: 152 files (+54,355 lines) — bulk is the bundled skill markdown content (each skill ships with a SKILL.md and supporting docs) + the existing Excalidraw diagram (2,119 lines)
+- Of those, the actual *Phase 0 boilerplate*: `.gitignore`, `.env.example`, `docker-compose.yml`, `AGENTS.md`, `skills-lock.json`, plus `.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md` (~500 lines)
+
+##### Issues Encountered & Decisions
+1. **`npx skills add` creates 22+ unused agent-tool dirs.** The `skills` CLI scaffolds dirs for every supported agent (Cursor, Continue, Codex, etc.) even though we only use Claude Code. Resolution: gitignored all of them; canonical content lives in `.agents/skills/`, Claude Code reads from `.claude/skills/` via symlinks, and `skills-lock.json` lets the others be re-scaffolded with `npx skills add` if a collaborator needs them.
+2. **Phase 0 ships as the initial main commit, not a feature branch.** A `feature/boilerplate-phase0` PR has nothing to merge against on a brand-new repo. Phases 1–5 will follow the `feature/boilerplate-phase{N}` branch+PR pattern as planned.
+3. **`.venv/` deliberately gitignored.** The original spec's "first commit captures `.venv/`" line was wrong — Python venvs are environment-specific and should not be checked in. The Playwright scraper in `scripts/` can be re-bootstrapped from a future `requirements.txt` (out of scope here).
+
+##### Skills Installed (with hashes from `skills-lock.json`)
+| Skill | SHA |
+|---|---|
+| `better-auth-best-practices` | `a4c83050…2c2a6dc` |
+| `better-auth-security-best-practices` | `5717187b…d8b8c915` |
+| `email-and-password-best-practices` | (in lockfile) |
+| `vite` | (in lockfile) |
+| `biome-developer` | `3a9e05cb…71a510a513` |
 
 ---
 
