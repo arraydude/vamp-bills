@@ -47,6 +47,24 @@ export function createBaseConfig({
         // No `any` in source. Escape hatch: inline disable with a `--`
         // comment explaining why. See CLAUDE.md.
         "@typescript-eslint/no-explicit-any": "error",
+        // Discourage parent-relative imports. Prefer absolute paths via
+        // package-local TS path aliases (e.g. `@vamp-bills/backend/...`
+        // mapped via tsconfig `paths`) or workspace package imports.
+        // Sibling `./xxx.ts` is fine. Set to `warn` so it surfaces as
+        // editor squiggles + CI warning without blocking merge — a
+        // nudge, not a wall.
+        "no-restricted-imports": [
+          "warn",
+          {
+            patterns: [
+              {
+                group: ["../*", "../**"],
+                message:
+                  "Prefer absolute imports: package-local TS path aliases (e.g. `@vamp-bills/backend/...`) or workspace packages (`@vamp-bills/...`, `@workspace/...`). Sibling imports (`./xxx.ts`) are fine.",
+              },
+            ],
+          },
+        ],
       },
       linterOptions: { reportUnusedDisableDirectives: "error" },
     },

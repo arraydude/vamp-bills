@@ -1,6 +1,5 @@
+import { billStatusEnum } from "@vamp-bills/backend/db/app-schema.ts";
 import { z } from "zod";
-
-import { billStatusEnum } from "../../db/app-schema.ts";
 
 // Single source of truth: the Drizzle pgEnum's typed value tuple.
 // Adding/removing a status requires only one edit in app-schema.ts; everything

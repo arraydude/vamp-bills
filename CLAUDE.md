@@ -93,10 +93,15 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   completion date in the filename (e.g. the boilerplate scaffolding
   spec is at
   [`.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md`](./.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md)).
-- **Backend type-only seam:** the frontend imports `AppRouter` from
-  `@vamp-bills/backend/trpc/router` *type-only*. The backend's
-  `package.json` `exports` map exposes only the `types` condition — value
-  imports fail to resolve at the bundler. Don't try to "fix" that.
+- **Workspace package imports across packages.** Every package is
+  consumable by name: `@vamp-bills/backend/...`, `@workspace/ui/...`. The
+  backend's `package.json` `exports` map exposes `./src/*.ts` so its files
+  can be imported directly (`import { db } from "@vamp-bills/backend/db/client.ts"`).
+  Convention — not bundler-enforced — keeps the FE from importing backend
+  *value* code: the FE only needs `import type { AppRouter } from "@vamp-bills/backend/trpc/router"`
+  for tRPC contract sharing. If you find yourself wanting a backend value
+  on the FE, that's a sign the logic should move to a shared location, not
+  that the import is the right move.
 - **Tests:** vitest. Pure-function tests sit alongside the module they cover
   (e.g. `packages/backend/src/domain/bill/machine.test.ts`). Run with
   `pnpm test`. Integration tests (when added) hit real Postgres via
@@ -108,3 +113,16 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   buttons without importing the machine. See
   [`packages/backend/src/domain/bill/`](./packages/backend/src/domain/bill/)
   for the pattern.
+- **No parent-relative imports.** Use the workspace package name
+  (`@vamp-bills/backend/...`, `@workspace/ui/...`) for any cross-directory
+  import — same syntax for self-imports inside a package and for imports
+  from another package. Each package's `package.json#exports` map
+  publishes its `src/` so the alias works without tsconfig `paths` or
+  bundler plugins. Sibling imports (`./xxx.ts`) are fine — they don't
+  cross module boundaries. Surfaced as a `warn`-level
+  `no-restricted-imports` rule in `eslint.config.base.mjs`.
+- **No barrel `index.ts` re-exports.** Direct file imports beat
+  pass-through index files: locality (the import path tells you which
+  file the symbol lives in), no double-source-of-truth, no name drift.
+  Deletion test as the heuristic — if removing the barrel just moves
+  the import statements unchanged, the barrel was earning nothing.

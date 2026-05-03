@@ -1,19 +1,16 @@
 import { describe, expect, it } from "vitest";
 
+import type { BillEvent, BillEventType } from "./events.ts";
 import {
-  attemptTransition,
-  availableEvents,
-  BILL_STATUSES,
-  type BillEvent,
-  type BillEventType,
   type BillSnapshot,
   hasReconciledLineItems,
   hasRequiredFields,
   isReady,
   type LineItemSnapshot,
   missingFields,
-  type TransitionDerived,
-} from "./index.ts";
+} from "./predicates.ts";
+import { BILL_STATUSES } from "./status.ts";
+import { attemptTransition, availableEvents, type TransitionDerived } from "./transitions.ts";
 
 const READY: TransitionDerived = {
   hasRequiredFields: true,
