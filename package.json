@@ -6,6 +6,7 @@
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "format": "biome format --write .",
     "lint": "biome lint . && pnpm -r lint:eslint",
     "lint:fix": "biome lint --write . && pnpm -r lint:eslint:fix",

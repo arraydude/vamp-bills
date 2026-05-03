@@ -47,6 +47,24 @@ export function createBaseConfig({
         // No `any` in source. Escape hatch: inline disable with a `--`
         // comment explaining why. See CLAUDE.md.
         "@typescript-eslint/no-explicit-any": "error",
+        // Forbid parent-relative imports (`../`). Use the workspace
+        // package name (`@vamp-bills/backend/...`, `@workspace/ui/...`)
+        // for any cross-directory import. Sibling imports (`./xxx.ts`)
+        // are fine — they don't cross module boundaries. Same enforcement
+        // posture as the `any` ban: hard error, project-wide, no warning
+        // half-step.
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["../*", "../**"],
+                message:
+                  "Parent-relative imports are forbidden. Use the workspace package name (`@vamp-bills/backend/...`, `@workspace/ui/...`) or sibling imports (`./xxx.ts`).",
+              },
+            ],
+          },
+        ],
       },
       linterOptions: { reportUnusedDisableDirectives: "error" },
     },

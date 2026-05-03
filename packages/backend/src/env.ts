@@ -16,7 +16,13 @@ loadEnv({ path: [path.join(repoRoot, ".env.local"), path.join(repoRoot, ".env")]
 const schema = z.object({
   DATABASE_URL: z.string().url(),
   BETTER_AUTH_SECRET: z.string().min(1),
-  BETTER_AUTH_URL: z.string().url(),
+  // Optional in the schema — when not set explicitly we derive it from
+  // Vercel's `VERCEL_URL` system env var (always set on every Vercel
+  // deployment, including per-PR previews). This avoids having to pin
+  // BETTER_AUTH_URL per-branch in Vercel project settings, which is what
+  // bit feature-branch previews previously: the explicit env var was
+  // scoped to specific branches and absent on every other PR's preview.
+  BETTER_AUTH_URL: z.string().url().optional(),
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -29,4 +35,15 @@ if (!parsed.success) {
   throw new Error("Invalid environment variables");
 }
 
-export const env = parsed.data;
+const vercelUrl = process.env.VERCEL_URL;
+const betterAuthUrl =
+  parsed.data.BETTER_AUTH_URL ?? (vercelUrl ? `https://${vercelUrl}` : undefined);
+
+if (!betterAuthUrl) {
+  throw new Error(
+    "BETTER_AUTH_URL must be set explicitly when not running on Vercel " +
+      "(VERCEL_URL not present in process.env). Set it in .env.local for local dev.",
+  );
+}
+
+export const env = { ...parsed.data, BETTER_AUTH_URL: betterAuthUrl };

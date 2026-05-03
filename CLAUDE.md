@@ -93,9 +93,44 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   completion date in the filename (e.g. the boilerplate scaffolding
   spec is at
   [`.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md`](./.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md)).
-- **Backend type-only seam:** the frontend imports `AppRouter` from
-  `@vamp-bills/backend/trpc/router` *type-only*. The backend's
-  `package.json` `exports` map exposes only the `types` condition — value
-  imports fail to resolve at the bundler. Don't try to "fix" that.
-- **Tests:** none yet. When they land, prefer integration tests against a
-  real Postgres (docker-compose), not mocks of the DB layer.
+- **Workspace package imports across packages.** Every package is
+  consumable by name: `@vamp-bills/backend/...`, `@workspace/ui/...`. The
+  backend's `package.json` `exports` map exposes `./src/*.ts` so its files
+  can be imported directly (`import { db } from "@vamp-bills/backend/db/client.ts"`).
+  Convention — not bundler-enforced — keeps the FE from importing backend
+  *value* code: the FE only needs `import type { AppRouter } from "@vamp-bills/backend/trpc/router"`
+  for tRPC contract sharing. If you find yourself wanting a backend value
+  on the FE, that's a sign the logic should move to a shared location, not
+  that the import is the right move.
+- **Tests:** vitest. Pure-function tests sit alongside the module they cover
+  (e.g. `packages/backend/src/domain/bill/machine.test.ts`). Run with
+  `pnpm test`. Integration tests (when added) hit real Postgres via
+  docker-compose, never mocks of the DB layer.
+- **Domain logic:** state machines for entity lifecycles use **XState v5 as
+  a pure transition function** (server-side only — no FE dep). Status enums
+  are sourced from the Drizzle `pgEnum.enumValues` tuple, never duplicated.
+  Routers expose `availableActions` on entity outputs so the FE renders
+  buttons without importing the machine. See
+  [`packages/backend/src/domain/bill/`](./packages/backend/src/domain/bill/)
+  for the pattern.
+- **Validation: Drizzle is the column-shape source of truth.** Zod schemas
+  are derived via `drizzle-zod`'s `createInsertSchema(...)` /
+  `createSelectSchema(...)` rather than hand-written. Domain rules above
+  the DB level (whitespace-only strings, decimal regex, totals
+  reconciliation) layer on top as Zod refinements. **No parallel
+  hand-written validators.** Adding a column to a Drizzle table flows
+  through to the Zod schema automatically — no second edit needed.
+  Reference: [`domain/bill/schemas.ts`](./packages/backend/src/domain/bill/schemas.ts).
+- **No parent-relative imports.** Use the workspace package name
+  (`@vamp-bills/backend/...`, `@workspace/ui/...`) for any cross-directory
+  import — same syntax for self-imports inside a package and for imports
+  from another package. Each package's `package.json#exports` map
+  publishes its `src/` so the alias works without tsconfig `paths` or
+  bundler plugins. Sibling imports (`./xxx.ts`) are fine — they don't
+  cross module boundaries. Enforced as a hard `no-restricted-imports`
+  error in `eslint.config.base.mjs` (same posture as the `any` ban).
+- **No barrel `index.ts` re-exports.** Direct file imports beat
+  pass-through index files: locality (the import path tells you which
+  file the symbol lives in), no double-source-of-truth, no name drift.
+  Deletion test as the heuristic — if removing the barrel just moves
+  the import statements unchanged, the barrel was earning nothing.
