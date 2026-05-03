@@ -28,7 +28,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Match the workspace root's engines.node (>=20.19 — required by
+          # @tanstack/react-router and router-plugin). `20.19.x` resolves to
+          # the latest 20.19 patch on GitHub-hosted runners.
+          node-version: 20.19.x
           cache: pnpm
 
       - name: Install dependencies
