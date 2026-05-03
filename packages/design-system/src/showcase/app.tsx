@@ -33,8 +33,9 @@ import {
   TableRow,
 } from "@workspace/ui/components/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
-import { useState } from "react";
 import { toast } from "sonner";
+
+import { usePath } from "./use-path.ts";
 
 const BILLS = [
   { vendor: "Acme Inc.", invoice: "INV-001", status: "Awaiting approval", amount: "$1,240.00" },
@@ -44,10 +45,10 @@ const BILLS = [
 ];
 
 export function App() {
-  const [view, setView] = useState<"app" | "login">("app");
+  const { path, navigate } = usePath();
 
-  if (view === "login") return <LoginView onBack={() => setView("app")} />;
-  return <AppView onSignOut={() => setView("login")} />;
+  if (path === "/login") return <LoginView onBack={() => navigate("/")} />;
+  return <AppView onSignOut={() => navigate("/login")} />;
 }
 
 function AppView({ onSignOut }: { onSignOut: () => void }) {
