@@ -17,9 +17,14 @@ export type TransitionResult =
 
 // Spec-driven action-ribbon order per state, sourced from
 // docs/mvp-scope.md "Bill detail page" → "State-appropriate primary actions".
-// `awaiting_approval` keeps ARCHIVE last even though the spec ribbon doesn't
-// list it explicitly — the machine allows it (per the lifecycle table) and
-// the UI may surface it via a kebab/overflow menu.
+//
+// **Deliberate deviation from spec**: `awaiting_approval` includes ARCHIVE
+// even though the spec's lifecycle table (mvp-scope.md:113-128) and action
+// ribbon (mvp-scope.md:165) both omit it. We keep the machine more
+// permissive than the spec's documented UI surface so a submitter can pull
+// the plug on a pending-review bill without waiting for the approver — the
+// UI may render it through a kebab/overflow menu rather than the primary
+// ribbon. If the spec is tightened later, drop ARCHIVE from this row.
 const ACTION_ORDER: Record<BillStatus, readonly BillEventType[]> = {
   draft: ["SUBMIT", "ARCHIVE"],
   awaiting_approval: ["APPROVE", "REJECT", "ARCHIVE"],
