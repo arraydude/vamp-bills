@@ -67,6 +67,11 @@ function toCents(amount: string): number {
   // Accepts "100", "100.5", "100.50". Rejects malformed input by returning NaN
   // — comparison with NaN is always false, so a malformed amount never
   // reconciles. That's the right failure mode here.
+  //
+  // Empty/whitespace strings are explicitly rejected because `Number("")`
+  // returns 0 (not NaN), which would silently let a blank line item count as
+  // zero and pass reconciliation if the rest happen to sum to the total.
+  if (amount.trim() === "") return Number.NaN;
   const n = Number(amount);
   if (!Number.isFinite(n)) return Number.NaN;
   return Math.round(n * 100);

@@ -94,23 +94,45 @@ describe("billMachine — illegal transitions are rejected", () => {
 });
 
 describe("billMachine — isReady guard on SUBMIT", () => {
-  it("rejects SUBMIT when not ready (missing fields)", () => {
+  it("rejects SUBMIT when not ready (missing fields) — kind: guard_failed", () => {
     const result = attemptTransition("draft", { type: "SUBMIT" }, NOT_READY);
     expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.kind).toBe("guard_failed");
   });
 
-  it("rejects SUBMIT when fields present but totals don't reconcile", () => {
+  it("rejects SUBMIT when fields present but totals don't reconcile — kind: guard_failed", () => {
     const result = attemptTransition(
       "draft",
       { type: "SUBMIT" },
       { hasRequiredFields: true, hasReconciledLineItems: false },
     );
     expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.kind).toBe("guard_failed");
   });
 
   it("accepts SUBMIT when both flags true", () => {
     const result = attemptTransition("draft", { type: "SUBMIT" }, READY);
     expect(result).toEqual({ ok: true, nextStatus: "awaiting_approval" });
+  });
+});
+
+describe("billMachine — failure kinds discriminate wrong_state from guard_failed", () => {
+  it("SUBMIT from a state with no SUBMIT handler (paid) → kind: wrong_state", () => {
+    const result = attemptTransition("paid", { type: "SUBMIT" }, READY);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.kind).toBe("wrong_state");
+  });
+
+  it("SUBMIT from draft with not-ready context → kind: guard_failed (handler exists, guard rejects)", () => {
+    const result = attemptTransition("draft", { type: "SUBMIT" }, NOT_READY);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.kind).toBe("guard_failed");
+  });
+
+  it("APPROVE from rejected → kind: wrong_state (no APPROVE handler in rejected)", () => {
+    const result = attemptTransition("rejected", { type: "APPROVE" }, READY);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.kind).toBe("wrong_state");
   });
 });
 
@@ -131,8 +153,8 @@ describe("availableEvents — what the UI button row should show", () => {
     expect(availableEvents("approved", READY)).toEqual(["MARK_PAID", "ARCHIVE", "EDIT"]);
   });
 
-  it("rejected: ARCHIVE + EDIT", () => {
-    expect(availableEvents("rejected", READY)).toEqual(["ARCHIVE", "EDIT"]);
+  it("rejected: EDIT + ARCHIVE (spec ribbon: 'Edit & resubmit' before 'Archive')", () => {
+    expect(availableEvents("rejected", READY)).toEqual(["EDIT", "ARCHIVE"]);
   });
 
   it("paid: nothing — terminal", () => {
@@ -208,5 +230,25 @@ describe("predicates — missingFields / isReady", () => {
     expect(hasReconciledLineItems(completeBill, [{ amount: "sixty" }, { amount: "40.00" }])).toBe(
       false,
     );
+  });
+
+  it("hasReconciledLineItems rejects empty/whitespace amount even when others sum to total", () => {
+    // Catches the `Number("") === 0` parsing bug: a blank line item must not
+    // silently count as zero, even if the rest happen to sum exactly to
+    // total_amount.
+    expect(
+      hasReconciledLineItems(completeBill, [
+        { amount: "" },
+        { amount: "60.00" },
+        { amount: "40.00" },
+      ]),
+    ).toBe(false);
+    expect(
+      hasReconciledLineItems(completeBill, [
+        { amount: "   " },
+        { amount: "60.00" },
+        { amount: "40.00" },
+      ]),
+    ).toBe(false);
   });
 });
