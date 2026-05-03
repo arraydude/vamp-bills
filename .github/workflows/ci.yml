@@ -37,6 +37,9 @@ jobs:
       - name: Biome check (format + lint)
         run: pnpm exec biome ci .
 
+      - name: ESLint (typescript-eslint + react)
+        run: pnpm -r lint:eslint
+
       - name: Typecheck
         run: pnpm typecheck
 
