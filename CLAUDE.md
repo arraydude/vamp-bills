@@ -44,10 +44,13 @@ Never acceptable: "I don't feel like typing it", "the inference is hard",
 - **Branch model:** `feature/...` → `develop` (preview) → `main` (prod). See
   [`docs/contributing.md`](./docs/contributing.md). Never push directly to
   `main`.
-- **Commits via spec:** boilerplate work tracks
-  [`.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md`](./.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md).
-  Each phase ends with a Completion Report appended to the spec and a
-  Progress Tracker checkbox flip.
+- **Commits via spec:** when phased work is in flight, follow the spec
+  in `.claude/specs/<NAME>_SPEC.md`. Each phase ends with a Completion
+  Report appended to the spec and a Progress Tracker checkbox flip.
+  Completed specs are archived to `.claude/specs/archive/` with the
+  completion date in the filename (e.g. the boilerplate scaffolding
+  spec is at
+  [`.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md`](./.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md)).
 - **Backend type-only seam:** the frontend imports `AppRouter` from
   `@vamp-bills/backend/trpc/router` *type-only*. The backend's
   `package.json` `exports` map exposes only the `types` condition — value

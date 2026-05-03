@@ -4,7 +4,7 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 
 - Scope and lifecycle: [`docs/mvp-scope.md`](./docs/mvp-scope.md)
 - Branching workflow: [`docs/contributing.md`](./docs/contributing.md)
-- Boilerplate spec & progress: [`.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md`](./.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md)
+- Boilerplate spec (archived, completed 2026-05-03): [`.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md`](./.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md)
 
 ## Stack
 
