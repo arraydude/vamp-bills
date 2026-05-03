@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# Cancel in-flight runs when a new commit lands on the same ref (typical PR flow).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        # Version is read from package.json's "packageManager" field — single
+        # source of truth so we don't drift between local/CI versions.
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Match the workspace root's engines.node (>=20.19 — required by
+          # @tanstack/react-router and router-plugin). `20.19.x` resolves to
+          # the latest 20.19 patch on GitHub-hosted runners.
+          node-version: 20.19.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome check (format + lint)
+        run: pnpm exec biome ci .
+
+      - name: ESLint (typescript-eslint + react)
+        run: pnpm -r lint:eslint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
