@@ -4,9 +4,8 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./trpc/router": {
-      "types": "./src/trpc/router.ts"
-    },
+    "./*.ts": "./src/*.ts",
+    "./trpc/router": "./src/trpc/router.ts",
     "./app": "./src/app.ts"
   },
   "scripts": {
@@ -15,6 +14,8 @@
     "typecheck": "tsc --noEmit",
     "lint:eslint": "eslint . --max-warnings 0",
     "lint:eslint:fix": "eslint . --max-warnings 0 --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "auth:generate": "better-auth generate --output src/db/auth-schema.ts --yes"
@@ -25,8 +26,10 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "drizzle-zod": "^0.8.3",
     "express": "^5.2.1",
     "pg": "^8.20.0",
+    "xstate": "^5.31.0",
     "zod": "^4.4.2"
   },
   "devDependencies": {
@@ -35,8 +38,10 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
+    "@vitest/ui": "^4.1.5",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.21.0",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "^4.1.5"
   }
 }

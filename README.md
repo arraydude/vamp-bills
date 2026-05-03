@@ -86,6 +86,7 @@ Frontend on `:5173` proxies `/trpc` and `/api/auth` to the backend on `:3000` (c
 | `pnpm dev` | Boot all packages in parallel (`pnpm -r --parallel dev`) |
 | `pnpm build` | Production build across packages |
 | `pnpm typecheck` | `tsc --noEmit` across packages |
+| `pnpm test` | Run vitest across packages (unit tests for pure-function modules; integration tests not yet added) |
 | `pnpm check` | Biome format + lint with auto-fix + ESLint per package |
 | `pnpm format` | Biome format only |
 | `pnpm lint` | Biome lint only |

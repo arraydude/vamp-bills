@@ -1,6 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
+import { auth } from "@vamp-bills/backend/auth.ts";
 import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "../auth.ts";
 
 // Vercel's @vercel/node tsc pass intermittently fails to resolve
 // `http.IncomingMessage` through the @types/express → @types/node chain
