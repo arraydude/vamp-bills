@@ -1,11 +1,12 @@
 # Boilerplate Scaffolding Specification
 
-**Status:** IN PROGRESS — Phase 2 complete
+**Status:** IN PROGRESS — Phase 3 complete
 **Created:** 2026-05-02
 **Last Updated:** 2026-05-03
 **Phase 0 Completed:** 2026-05-02
 **Phase 1 Completed:** 2026-05-02
 **Phase 2 Completed:** 2026-05-03
+**Phase 3 Completed:** 2026-05-03
 **Purpose:** Stand up the monorepo skeleton (design-system, frontend, backend) on which the vamp-bills MVP will be built.
 **Priority:** HIGH (blocks all feature work)
 **Complexity:** MEDIUM
@@ -250,9 +251,20 @@ npx skills add bobmatnyc/claude-mpm-skills@drizzle-orm -y
 npx skills add bobmatnyc/claude-mpm-skills@drizzle-migrations -y
 npx skills add bobmatnyc/claude-mpm-skills@trpc-type-safety -y
 
-# Phase 3 — TanStack via intent (auto-discovered after `pnpm add @tanstack/*`)
-npx -y @tanstack/intent install   # exact command per https://tanstack.com/intent/latest/docs
+# Phase 3 — TanStack via intent (auto-discovered after `pnpm add @tanstack/* @trpc/*`)
+# `intent install` is one-time, already done in Phase 0/2 (writes the loading-guidance
+# block to AGENTS.md). On subsequent phases just verify with `intent list`:
+npx @tanstack/intent@latest list   # confirms newly-installed packages publish skills
 ```
+
+### Two skill loading models in use
+
+The repo mixes two complementary mechanisms — keep them straight:
+
+| Model | Used for | How content reaches the agent |
+|---|---|---|
+| **`npx skills add`** (Phase 0/2 — BetterAuth, Drizzle, tRPC type-safety, etc.) | Curated, version-stable best-practices guides published as separate GitHub repos | Symlinks `SKILL.md` files into `.claude/skills/`, content always loaded into the agent's context |
+| **TanStack Intent** (Phase 3 onward — `@trpc/*`, `@tanstack/*` packages) | Skills shipped *inside* the npm package itself (in `node_modules`), version-aligned with the installed code | On-demand: `npx @tanstack/intent@latest load <pkg>#<skill>` fetches `SKILL.md` per task. Loading guidance in `AGENTS.md` tells the agent when to call it. **No symlinks under `.claude/skills/`.** |
 
 > **Verify before installing each.** Per `find-skills` guidance: re-check install count and source reputation when running. If a skill has dropped or a better one has appeared, update this list. Update the skill list in the spec (per `spec-living-document`) if substitutions are made.
 
@@ -265,7 +277,7 @@ npx -y @tanstack/intent install   # exact command per https://tanstack.com/inten
 - [x] **Phase 0: Repo Foundation** — git init, .gitignore, .env.example, docker-compose, agent skills, spec — **COMPLETED 2026-05-02** (commit `f04c827`)
 - [x] **Phase 1: Design System + Frontend Skeleton** — shadcn init, restructure to flat `packages/*`, Biome — **COMPLETED 2026-05-02** (PR #1 squash-merged into `develop` as `c1e9f4c`)
 - [x] **Phase 2: Backend Skeleton** — Express + tRPC + Drizzle + BetterAuth, `health` procedure — **COMPLETED 2026-05-03**
-- [ ] **Phase 3: Frontend Wiring** — TanStack stack, tRPC/auth clients, index route hits `health`
+- [x] **Phase 3: Frontend Wiring** — TanStack stack, tRPC/auth clients, index route hits `health` — **COMPLETED 2026-05-03**
 - [ ] **Phase 4: Local End-to-End Verification** — DB up, auth tables, full roundtrip, builds clean
 - [ ] **Phase 5: Deploy to Vercel + Neon** — single Vercel project (frontend + Express serverless), Neon Postgres, public URL serves the same `health` roundtrip
 
@@ -487,30 +499,76 @@ Stood up `packages/backend` (`@vamp-bills/backend`) with Express 5 + tRPC 11 + D
 
 ### Phase 3 — Frontend Wiring
 
-**Goal:** install the TanStack stack, tRPC client, and BetterAuth client in the frontend, and prove the FE↔BE roundtrip by rendering the value of `trpc.health.useQuery()` on the index route.
+**Goal:** install the TanStack stack, tRPC client, and BetterAuth client in the frontend, and prove the FE↔BE roundtrip by rendering the value of `useQuery(trpc.health.queryOptions())` on the index route.
 
 **Files Modified:**
-- `packages/frontend/package.json` — add deps: `@tanstack/react-router`, `@tanstack/router-plugin`, `@tanstack/react-query`, `@trpc/client`, `@trpc/tanstack-react-query`, `@tanstack/react-form`, `@tanstack/react-table`, `zod`, `better-auth`; add `@vamp-bills/backend: workspace:*` as devDependency for type-only `AppRouter` import
-- `packages/frontend/vite.config.ts` — add `TanStackRouterVite()` plugin; add `server.proxy['/trpc']` and `server.proxy['/api/auth']` → `http://localhost:3000`
-- `packages/frontend/src/main.tsx` — wrap root in `QueryClientProvider` and `RouterProvider`
+- `packages/frontend/package.json` — add deps: `@tanstack/react-router`, `@tanstack/react-query`, `@tanstack/react-form`, `@tanstack/react-table`, `@trpc/client`, `@trpc/tanstack-react-query`, `zod` (preinstalled — unused in Phase 3, but the AppRouter type will reference it as soon as the first `.input(z.object(…))` validator lands on a backend procedure; pre-installing avoids a future install round at first use), `better-auth@1.4.21` (pinned in lockstep with the backend — see Phase 2 Decision #1); add devDeps `@tanstack/router-plugin` and `@vamp-bills/backend: workspace:*` (type-only via the backend's `exports.types`-only condition)
+- `packages/frontend/vite.config.ts` — add `tanstackRouter({ target: 'react', autoCodeSplitting: true })` plugin **before** `react()` (so generated route imports are rewritten before React's Babel pass); add `server.proxy['/trpc']` and `server.proxy['/api/auth']` → `http://localhost:3000`
+- `packages/frontend/src/main.tsx` — providers chain `ThemeProvider > QueryClientProvider > TRPCProvider > RouterProvider`
+- *(no `.gitignore` change)* — `packages/frontend/src/routeTree.gen.ts` is regenerated on dev/build but is **committed** so workspace `tsc -b --noEmit` and `vite build` resolve `./routeTree.gen.ts` from `src/router.ts` without needing a pre-build codegen step in CI
 
 **Files Created:**
-- `packages/frontend/src/lib/trpc.ts` — `createTRPCClient<AppRouter>` with `httpBatchLink({ url: '/trpc' })`; `createTRPCOptionsProxy` for React Query integration. Type-only: `import type { AppRouter } from '@vamp-bills/backend/trpc/router'`
+- `packages/frontend/src/lib/trpc.ts` — `createTRPCContext<AppRouter>()` from `@trpc/tanstack-react-query`, exporting `TRPCProvider`, `useTRPC`, `useTRPCClient`. Type-only: `import type { AppRouter } from '@vamp-bills/backend/trpc/router'`
+- `packages/frontend/src/lib/trpc-client.ts` — `createTRPCClient<AppRouter>` with `httpBatchLink({ url: '/trpc' })`. Split from `trpc.ts` so the React-side hooks can be imported without dragging the runtime client into module-init order
 - `packages/frontend/src/lib/auth-client.ts` — `createAuthClient({ baseURL: '/api/auth' })` from `better-auth/react`
-- `packages/frontend/src/routes/__root.tsx` — root layout with `<Outlet />`
-- `packages/frontend/src/routes/index.tsx` — calls `trpc.health.useQuery()`, renders `ok` and `ts`
+- `packages/frontend/src/lib/query-client.ts` — `new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } } })`
+- `packages/frontend/src/router.ts` — `createRouter({ routeTree })` plus `declare module '@tanstack/react-router' { interface Register { router: typeof router } }` for type-safe `<Link to="...">`
+- `packages/frontend/src/routes/__root.tsx` — minimal root: `createRootRoute({ component: () => <Outlet /> })`
+- `packages/frontend/src/routes/index.tsx` — `Route = createFileRoute('/')({ component: Home })`; `Home` calls `useQuery(trpc.health.queryOptions())` via `useTRPC()` and renders `ok` and `ts` alongside the preserved Phase 1 card layout
+
+**Files Deleted:**
+- `packages/frontend/src/App.tsx` — its layout moves into `routes/index.tsx`
 
 **Tasks:**
 - [ ] Add deps and re-install
-- [ ] Configure Vite plugin + proxy
-- [ ] Implement `lib/trpc.ts` and `lib/auth-client.ts`
-- [ ] Create `routes/__root.tsx` and `routes/index.tsx`; let TanStack Router plugin generate `routeTree.gen.ts`
-- [ ] Wire providers in `main.tsx`
+- [ ] Configure Vite plugin + proxy + `.gitignore`
+- [ ] Implement `lib/{trpc,trpc-client,auth-client,query-client}.ts` and `src/router.ts`
+- [ ] Create `routes/__root.tsx` and `routes/index.tsx`; first `pnpm dev` generates `src/routeTree.gen.ts`
+- [ ] Wire providers in `main.tsx`; delete `App.tsx`
 - [ ] Smoke: open `http://localhost:5173` — page renders shadcn-styled, displays the `health` payload
-- [ ] Run `npx -y @tanstack/intent install` (verify exact command at [`tanstack.com/intent/latest/docs`](https://tanstack.com/intent/latest/docs)) — auto-discovers TanStack skills shipped inside `@tanstack/*` packages and installs them into `.claude/skills/`
-- [ ] `git add .claude/skills/` and commit
+- [ ] Run `npx @tanstack/intent@latest list` to confirm new skills are auto-discovered from `node_modules` (intent uses on-demand `intent load <pkg>#<skill>`; the loading guidance in `AGENTS.md` was already wired in Phase 0/2 — no symlinks under `.claude/skills/` get added)
 
-**Verification:** Browser shows `{ ok: true, ts: <number> }` on the index route; no console errors; type narrowing works (hover over `data` in the IDE → typed shape from backend); `.claude/skills/` contains TanStack Router/Query/Form/Table skills.
+**Verification:** Browser shows `{ ok: true, ts: <number> }` on the index route; no console errors; type narrowing works (hover over `data` in the IDE → typed `{ ok: boolean; ts: number }` from backend); `npx @tanstack/intent@latest list` shows the new `@trpc/client`, `@trpc/tanstack-react-query`, and `@tanstack/router-*` packages with their per-package skills (note: not all `@tanstack/*` packages publish skills via intent yet — `react-query`, `react-form`, `react-table` may not show up directly).
+
+#### Phase 3 Completion Report
+
+**Completion Date:** 2026-05-03
+**Status:** SUCCESSFUL
+**Branch:** `feature/boilerplate-phase3` → PR'd into `develop`
+**Actual Effort:** ~30 minutes
+
+##### Summary
+Wired the frontend (`@vamp-bills/frontend`) to the Phase 2 backend. Browser at `http://localhost:5173` renders the preserved Phase 1 card with a live `{ ok: true, ts: <number> }` line populated from a typed tRPC roundtrip. The `AppRouter` type flows from backend to frontend via the workspace's type-only `exports` condition; no backend runtime code is bundled. Vite proxy makes `/trpc` and `/api/auth` same-origin from the browser, so default CORS + cookie behavior Just Works.
+
+##### Key Achievements
+- 8 new frontend source files (4 lib modules + router + 2 routes + main rewrite); App.tsx removed.
+- TanStack Router file-based routing in place with `autoCodeSplitting: true` (47 KB code-split routes chunk in build).
+- Frontend bundle: 337 KB JS / 23 KB CSS / 47 KB routes (gzipped: 105 KB / 5 KB / 16 KB) built in ~344 ms via Rolldown.
+- `'d'` keypress dark-mode toggle from Phase 1 preserved through the providers chain.
+- `npx @tanstack/intent@latest list` confirms `@trpc/client`, `@trpc/tanstack-react-query`, and `@tanstack/router-*` packages now publish their skills inline; the agent loads them on-demand via `intent load <pkg>#<skill>`.
+
+##### Files Changed
+- New: `packages/frontend/src/{lib/{trpc,trpc-client,auth-client,query-client}.ts, router.ts, routes/{__root,index}.tsx}`
+- Modified: `packages/frontend/{package.json, vite.config.ts, src/main.tsx}`, root `package.json` (`engines.node` bumped to `>=20.19` to match TanStack Router's requirement)
+- Deleted: `packages/frontend/src/App.tsx`
+- Modified: spec Phase 3 section + §4 (skill model clarification), `README.md` (Stack table, Getting started, Scripts, proxy note)
+
+##### Issues & Decisions
+1. **v11 tRPC + React Query pattern.** Spec was written against the legacy `createTRPCReact()` API (`trpc.health.useQuery()`). Implementation uses the current `@trpc/tanstack-react-query` pattern: `createTRPCContext<AppRouter>()` exporting `TRPCProvider`/`useTRPC`, then `useQuery(trpc.health.queryOptions())` in components. Spec amended in this PR.
+2. **lib/trpc split.** Rather than one `lib/trpc.ts`, we split into `trpc.ts` (React-side hooks) and `trpc-client.ts` (vanilla client). Keeps the hooks importable from any component without dragging the runtime client into module-init order. Provider chain in `main.tsx` wires both together.
+3. **`better-auth@1.4.21` pinned (not `^latest`).** Versions of the BetterAuth client and server share types and cookie shape — bump in lockstep with the backend (Phase 2 Decision #1).
+4. **`tanstackRouter()` plugin order.** Must run *before* `react()` so the generated route imports are rewritten before React's Babel pass touches them.
+5. **`routeTree.gen.ts` is generated *and* committed.** First-pass tried gitignoring it; CI typecheck failed because `tsc -b --noEmit` runs before `vite build` and resolves `import { routeTree } from './routeTree.gen.ts'` against a missing file. Cheapest fix: commit the generated file. Diff churn is bounded (only changes when routes are added/removed) and avoids an extra `@tanstack/router-cli` dep for a pre-build codegen step.
+6. **Vite proxy → backend `:3000`.** Same-origin from the browser means default `cors()` on the backend and default cookie behavior Just Work; no `credentials: 'include'` on fetch needed. Phase 5 Vercel deploy will route via `vercel.json` rewrites instead.
+7. **Type-only backend import seam.** Backend's `exports."./trpc/router".types`-only condition (locked in Phase 2 PR review) means the frontend can only `import type { AppRouter }` — value imports of `appRouter` fail to resolve at the bundler. Defensive seam validates as expected.
+8. **TanStack Intent vs `npx skills add` skill loading.** Two complementary mechanisms now coexist. `npx skills add` (Phase 0/2 BetterAuth/Drizzle/etc.) symlinks `SKILL.md` into `.claude/skills/` and content is always loaded. TanStack Intent (Phase 3 onward) ships skills *inside* `node_modules` per package and loads them on-demand via `intent load <pkg>#<skill>`. Spec §4 amended to document both.
+9. **Spec promised "TanStack Router/Query/Form/Table skills" via intent.** Reality: only some `@tanstack/*` packages and the two `@trpc/*` client packages publish intent skills today. `@tanstack/react-router`-side skills surface via `@tanstack/router-plugin` and `@tanstack/router-core`; `react-query`, `react-form`, `react-table` don't show as intent-publishers yet. Spec verification line amended.
+
+##### Skills picked up via intent (auto-discovered from node_modules)
+- `@trpc/client#client-setup`, `@trpc/client#links`
+- `@trpc/tanstack-react-query#react-query-setup`, `@trpc/tanstack-react-query#react-query-classic-migration`
+- `@tanstack/router-plugin#…`, `@tanstack/router-core#…` (10 skills)
+- `dotenv#dotenv` (carried over from Phase 2 install)
 
 ---
 
