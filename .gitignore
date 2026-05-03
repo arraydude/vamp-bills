@@ -75,3 +75,5 @@ __pycache__/
 .pnp
 .pnp.js
 *.pem
+.vercel
+.env*.local
