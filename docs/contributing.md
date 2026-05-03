@@ -49,6 +49,12 @@ pnpm db:up
 pnpm dev
 ```
 
+`pnpm install` runs the `prepare` script, which wires the
+`simple-git-hooks` pre-commit hook. The hook runs
+`biome check --staged --write` over staged files and re-stages any
+fixes so commits don't fail CI on formatting / import-sort issues.
+To bypass it for an emergency commit, set `SKIP_SIMPLE_GIT_HOOKS=1`.
+
 ## Commit messages
 
 Conventional Commits style — `feat(scope):`, `fix(scope):`, `docs(scope):`, etc. Scope is the package name when relevant (e.g. `feat(frontend): wire trpc client`).
