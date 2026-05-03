@@ -29,6 +29,32 @@ packages/
   backend/         Express + tRPC server — @vamp-bills/backend
 ```
 
+### `@workspace/ui` components
+
+shadcn `base-luma` style on Base UI. Frontend imports primitives via
+`@workspace/ui/components/<name>`; both `components.json` files are wired so
+new components added in `packages/design-system/` are immediately available.
+
+Currently installed:
+
+- **Blocks:** `sidebar-08` (collapsible app shell + user menu), `login-01`
+  (email/password sign-in card)
+- **Primitives:** avatar, badge, breadcrumb, button (custom Base UI build —
+  do not overwrite), calendar, card, checkbox, collapsible, dialog,
+  dropdown-menu, field, input, label, popover, select, separator, sheet,
+  sidebar, skeleton, sonner, table, tabs, tooltip
+- **Hooks:** `use-mobile`
+
+To add more, run from `packages/design-system/`:
+
+```bash
+pnpm dlx shadcn@latest add <component-or-block>
+```
+
+Vendored shadcn files live under `src/components/**` and `src/hooks/use-mobile.ts`;
+those paths get relaxed Biome + ESLint rules so re-running the CLI doesn't
+churn lint config (see `biome.json` overrides + `packages/design-system/eslint.config.mjs`).
+
 ## Getting started
 
 ```bash
