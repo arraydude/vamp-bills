@@ -10,7 +10,13 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 
 ## Database
 
-Application tables live in [`packages/backend/src/db/app-schema.ts`](./packages/backend/src/db/app-schema.ts) (`vendors`, `bills`, `bill_line_items`, `payments`) alongside the BetterAuth-generated tables in `auth-schema.ts`. Field-level definitions, status enums, and the bill/payment lifecycle are documented in [`docs/mvp-scope.md`](./docs/mvp-scope.md). Migrations are checked in under [`packages/backend/drizzle/`](./packages/backend/drizzle/) — generated with `pnpm db:generate`, applied with `pnpm db:push` for local dev.
+Application tables live in [`packages/backend/src/db/app-schema.ts`](./packages/backend/src/db/app-schema.ts) (`vendors`, `bills`, `bill_line_items`, `payments`) alongside the BetterAuth-generated tables in `auth-schema.ts`. Field-level definitions, status enums, and the bill/payment lifecycle are documented in [`docs/mvp-scope.md`](./docs/mvp-scope.md).
+
+Schema changes follow a three-command workflow:
+
+- `pnpm db:generate` — diff schema files and emit a new SQL migration into [`packages/backend/drizzle/`](./packages/backend/drizzle/). Pass `--name <descriptive_name>` so the file lands as `NNNN_<descriptive_name>.sql` instead of an auto-generated slug.
+- `pnpm db:migrate` — apply checked-in migrations against `DATABASE_URL` using the `drizzle.__drizzle_migrations` ledger to skip already-applied entries. Use this for Neon (and any environment you need a migration history for).
+- `pnpm db:push` — direct schema → DB sync that bypasses the migration files entirely. Local-dev convenience only; never run against Neon (it would create silent drift between the DB and the ledger).
 
 ## Stack
 
@@ -40,7 +46,7 @@ pnpm install
 cp .env.example .env       # fill in BETTER_AUTH_SECRET (openssl rand -base64 32), GOOGLE_CLIENT_*
 pnpm db:up                 # start postgres on :5432
 pnpm auth:generate         # generate BetterAuth Drizzle schema (first run only)
-pnpm db:push               # apply schema to local pg
+pnpm db:migrate            # apply checked-in migrations to local pg
 pnpm dev                   # boot all packages in parallel (`pnpm -r --parallel`)
 ```
 
@@ -57,6 +63,7 @@ Frontend on `:5173` proxies `/trpc` and `/api/auth` to the backend on `:3000` (c
 | `pnpm format` | Biome format only |
 | `pnpm lint` | Biome lint only |
 | `pnpm db:up` / `db:down` | docker-compose postgres |
-| `pnpm db:generate` | Drizzle Kit — generate SQL migrations from schema |
-| `pnpm db:push` | Drizzle Kit — apply schema directly to the connected DB |
+| `pnpm db:generate` | Drizzle Kit — generate SQL migrations from schema (use `--name <descriptive>`) |
+| `pnpm db:migrate` | Drizzle Kit — apply checked-in migrations to the connected DB (use this for Neon) |
+| `pnpm db:push` | Drizzle Kit — direct schema → DB sync; **local dev only**, bypasses the migration ledger |
 | `pnpm auth:generate` | BetterAuth CLI — regenerate `packages/backend/src/db/auth-schema.ts` from `auth.ts` |
