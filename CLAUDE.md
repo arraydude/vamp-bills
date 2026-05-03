@@ -127,8 +127,8 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   from another package. Each package's `package.json#exports` map
   publishes its `src/` so the alias works without tsconfig `paths` or
   bundler plugins. Sibling imports (`./xxx.ts`) are fine — they don't
-  cross module boundaries. Surfaced as a `warn`-level
-  `no-restricted-imports` rule in `eslint.config.base.mjs`.
+  cross module boundaries. Enforced as a hard `no-restricted-imports`
+  error in `eslint.config.base.mjs` (same posture as the `any` ban).
 - **No barrel `index.ts` re-exports.** Direct file imports beat
   pass-through index files: locality (the import path tells you which
   file the symbol lives in), no double-source-of-truth, no name drift.
