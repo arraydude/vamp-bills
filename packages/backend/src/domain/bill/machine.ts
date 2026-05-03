@@ -51,6 +51,11 @@ export const billMachine = setup({
     approved: {
       on: {
         MARK_PAID: { target: "paid" },
+        // Acknowledged self-action: bill stays in Approved; the router fires
+        // the actual `payments.status → cancelled` mutation on the side.
+        // Modeled as a transition with no `target` so XState reports it
+        // as "handled" (microstep fires) but value is unchanged.
+        CANCEL_PAYMENT: {},
         // Edit-restarts-approval rule from the spec.
         EDIT: { target: "awaiting_approval" },
         ARCHIVE: { target: "archived" },

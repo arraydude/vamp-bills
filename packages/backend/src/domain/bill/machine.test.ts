@@ -106,6 +106,21 @@ describe("billMachine — isReady guard on SUBMIT", () => {
   });
 });
 
+describe("billMachine — CANCEL_PAYMENT acknowledged self-action", () => {
+  it("CANCEL_PAYMENT from approved → ok, bill stays in approved (payment-side cancel happens via router)", () => {
+    const result = attemptTransition("approved", { type: "CANCEL_PAYMENT" }, READY);
+    expect(result).toEqual({ ok: true, nextStatus: "approved" });
+  });
+
+  it("CANCEL_PAYMENT from any non-approved state → wrong_state", () => {
+    for (const from of ["draft", "awaiting_approval", "rejected", "paid", "archived"] as const) {
+      const result = attemptTransition(from, { type: "CANCEL_PAYMENT" }, READY);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.kind).toBe("wrong_state");
+    }
+  });
+});
+
 describe("billMachine — failure kinds discriminate wrong_state from guard_failed", () => {
   it("SUBMIT from a state with no SUBMIT handler (paid) → kind: wrong_state", () => {
     const result = attemptTransition("paid", { type: "SUBMIT" }, READY);
@@ -139,8 +154,13 @@ describe("availableEvents — what the UI button row should show", () => {
     expect(availableEvents("awaiting_approval", READY)).toEqual(["APPROVE", "REJECT", "ARCHIVE"]);
   });
 
-  it("approved (Awaiting payment): MARK_PAID + ARCHIVE + EDIT", () => {
-    expect(availableEvents("approved", READY)).toEqual(["MARK_PAID", "ARCHIVE", "EDIT"]);
+  it("approved (Awaiting payment): MARK_PAID + CANCEL_PAYMENT + ARCHIVE + EDIT", () => {
+    expect(availableEvents("approved", READY)).toEqual([
+      "MARK_PAID",
+      "CANCEL_PAYMENT",
+      "ARCHIVE",
+      "EDIT",
+    ]);
   });
 
   it("rejected: EDIT + ARCHIVE (spec ribbon: 'Edit & resubmit' before 'Archive')", () => {

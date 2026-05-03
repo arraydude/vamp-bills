@@ -23,22 +23,24 @@ export type TransitionResult =
 const ACTION_ORDER: Record<BillStatus, readonly BillEventType[]> = {
   draft: ["SUBMIT", "ARCHIVE"],
   awaiting_approval: ["APPROVE", "REJECT", "ARCHIVE"],
-  approved: ["MARK_PAID", "ARCHIVE", "EDIT"],
+  approved: ["MARK_PAID", "CANCEL_PAYMENT", "ARCHIVE", "EDIT"],
   rejected: ["EDIT", "ARCHIVE"],
   paid: [],
   archived: [],
 };
 
-// Resolve the persisted status into an XState snapshot, then either:
-//   1. report `wrong_state` if the event has no handler in this state
-//   2. report `guard_failed` if a handler exists but the guard rejected
-//   3. report success with the next status
+// Resolve the persisted status into an XState snapshot, then classify:
+//   1. `wrong_state` — no transition handler for this event in this state
+//   2. `guard_failed` — handler has a guard, ran it, value unchanged
+//   3. ok — transition fired (state may change, or stay the same when the
+//      event is an acknowledged self-action like `CANCEL_PAYMENT`)
 //
-// The two-step check uses `getNextTransitions(snapshot)` to enumerate all
-// transitions out of the current state (including guarded ones) before
-// running the pure `transition()` to actually evaluate guards. This is the
-// only way to distinguish "no handler" from "handler with failing guard"
-// since `transition()` collapses both to a no-op snapshot.
+// We distinguish "guard rejected" from "self-action with no state change"
+// by inspecting whether the matched handler declares a `guard`. Only
+// guarded transitions can be `guard_failed`; an unguarded handler whose
+// value doesn't change is intentional (e.g., the `CANCEL_PAYMENT: {}`
+// self-action — bill stays in Approved while the router voids the
+// related Payment row out-of-band).
 export function attemptTransition(
   current: BillStatus,
   event: BillEvent,
@@ -50,8 +52,8 @@ export function attemptTransition(
   });
 
   const possible = getNextTransitions(snapshot);
-  const handled = possible.some((t) => t.eventType === event.type);
-  if (!handled) {
+  const handler = possible.find((t) => t.eventType === event.type);
+  if (!handler) {
     return {
       ok: false,
       kind: "wrong_state",
@@ -60,13 +62,16 @@ export function attemptTransition(
   }
 
   const [next] = runTransition(billMachine, snapshot, event);
-  if (next.value === current) {
+  const valueUnchanged = next.value === current;
+
+  if (valueUnchanged && handler.guard) {
     return {
       ok: false,
       kind: "guard_failed",
       reason: `${event.type} blocked: bill is not ready (missing required fields or unreconciled totals)`,
     };
   }
+
   return { ok: true, nextStatus: next.value as BillStatus };
 }
 
