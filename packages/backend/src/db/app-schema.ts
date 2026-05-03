@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   date,
   index,
@@ -12,7 +12,7 @@ import {
 
 import { user } from "./auth-schema.ts";
 
-export const billStatus = pgEnum("bill_status", [
+export const billStatusEnum = pgEnum("bill_status", [
   "draft",
   "awaiting_approval",
   "approved",
@@ -21,16 +21,14 @@ export const billStatus = pgEnum("bill_status", [
   "archived",
 ]);
 
-export const paymentStatus = pgEnum("payment_status", ["pending", "paid", "cancelled"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "cancelled"]);
 
-export const paymentMethod = pgEnum("payment_method", ["manual_off_platform"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["manual_off_platform"]);
 
 export const vendors = pgTable(
   "vendors",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
     name: text("name").notNull(),
     email: text("email").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -45,9 +43,7 @@ export const vendors = pgTable(
 export const bills = pgTable(
   "bills",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
     vendorId: text("vendor_id")
       .notNull()
       .references(() => vendors.id, { onDelete: "restrict" }),
@@ -60,7 +56,7 @@ export const bills = pgTable(
     approverId: text("approver_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
-    status: billStatus("status").default("draft").notNull(),
+    status: billStatusEnum("status").default("draft").notNull(),
     createdBy: text("created_by")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
@@ -83,9 +79,7 @@ export const bills = pgTable(
 export const billLineItems = pgTable(
   "bill_line_items",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
     billId: text("bill_id")
       .notNull()
       .references(() => bills.id, { onDelete: "cascade" }),
@@ -104,15 +98,13 @@ export const billLineItems = pgTable(
 export const payments = pgTable(
   "payments",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
     billId: text("bill_id")
       .notNull()
       .references(() => bills.id, { onDelete: "cascade" }),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-    status: paymentStatus("status").default("pending").notNull(),
-    paymentMethod: paymentMethod("payment_method").default("manual_off_platform").notNull(),
+    status: paymentStatusEnum("status").default("pending").notNull(),
+    paymentMethod: paymentMethodEnum("payment_method").default("manual_off_platform").notNull(),
     paidAt: timestamp("paid_at"),
     reference: text("reference"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
