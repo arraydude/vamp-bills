@@ -113,6 +113,14 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   buttons without importing the machine. See
   [`packages/backend/src/domain/bill/`](./packages/backend/src/domain/bill/)
   for the pattern.
+- **Validation: Drizzle is the column-shape source of truth.** Zod schemas
+  are derived via `drizzle-zod`'s `createInsertSchema(...)` /
+  `createSelectSchema(...)` rather than hand-written. Domain rules above
+  the DB level (whitespace-only strings, decimal regex, totals
+  reconciliation) layer on top as Zod refinements. **No parallel
+  hand-written validators.** Adding a column to a Drizzle table flows
+  through to the Zod schema automatically — no second edit needed.
+  Reference: [`domain/bill/schemas.ts`](./packages/backend/src/domain/bill/schemas.ts).
 - **No parent-relative imports.** Use the workspace package name
   (`@vamp-bills/backend/...`, `@workspace/ui/...`) for any cross-directory
   import — same syntax for self-imports inside a package and for imports

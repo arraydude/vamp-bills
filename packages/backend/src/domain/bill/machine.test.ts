@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BillEvent, BillEventType } from "./events.ts";
-import {
-  type BillSnapshot,
-  hasReconciledLineItems,
-  hasRequiredFields,
-  isReady,
-  type LineItemSnapshot,
-  missingFields,
-} from "./predicates.ts";
+import { isReady, missingPaths, readyBillSchema } from "./schemas.ts";
 import { BILL_STATUSES } from "./status.ts";
 import { attemptTransition, availableEvents, type TransitionDerived } from "./transitions.ts";
 
@@ -171,81 +164,97 @@ describe("BILL_STATUSES — single source from Drizzle pgEnum", () => {
   });
 });
 
-describe("predicates — missingFields / isReady", () => {
-  const completeBill: BillSnapshot = {
+describe("readyBillSchema — single-source validation via drizzle-zod + refinements", () => {
+  const completeBill = {
     vendorId: "v1",
     invoiceNumber: "INV-001",
     totalAmount: "100.00",
+    currency: "USD",
     invoiceDate: "2026-05-01",
+    dueDate: null,
     description: "test",
     approverId: "u1",
+    createdBy: "u1",
+    lineItems: [
+      { description: "first", amount: "60.00", position: 0 },
+      { description: "second", amount: "40.00", position: 1 },
+    ],
   };
-  const reconciledLineItems: LineItemSnapshot[] = [{ amount: "60.00" }, { amount: "40.00" }];
 
-  it("missingFields returns empty list when complete + reconciled", () => {
-    expect(missingFields(completeBill, reconciledLineItems)).toEqual([]);
+  it("missingPaths is empty when complete + reconciled", () => {
+    expect(missingPaths(completeBill)).toEqual([]);
   });
 
   it("isReady returns true when complete + reconciled", () => {
-    expect(isReady(completeBill, reconciledLineItems)).toBe(true);
-    expect(hasRequiredFields(completeBill, reconciledLineItems)).toBe(true);
-    expect(hasReconciledLineItems(completeBill, reconciledLineItems)).toBe(true);
+    expect(isReady(completeBill)).toBe(true);
+    expect(readyBillSchema.safeParse(completeBill).success).toBe(true);
   });
 
-  it("flags missing vendor", () => {
-    expect(missingFields({ ...completeBill, vendorId: null }, reconciledLineItems)).toContain(
-      "vendor",
-    );
+  it("flags missing vendorId", () => {
+    expect(missingPaths({ ...completeBill, vendorId: null })).toContain("vendorId");
   });
 
-  it("flags whitespace-only invoice number", () => {
-    expect(missingFields({ ...completeBill, invoiceNumber: "   " }, reconciledLineItems)).toContain(
-      "invoice_number",
-    );
+  it("flags whitespace-only invoiceNumber", () => {
+    expect(missingPaths({ ...completeBill, invoiceNumber: "   " })).toContain("invoiceNumber");
   });
 
   it("flags zero line items", () => {
-    expect(missingFields(completeBill, [])).toContain("line_items");
+    expect(missingPaths({ ...completeBill, lineItems: [] })).toContain("lineItems");
   });
 
-  it("flags totals that don't reconcile", () => {
-    const off: LineItemSnapshot[] = [{ amount: "60.00" }, { amount: "30.00" }];
-    expect(missingFields(completeBill, off)).toContain("totals_reconcile");
+  it("flags totals that do not reconcile (path: totalAmount, message: totals_reconcile)", () => {
+    const off = {
+      ...completeBill,
+      lineItems: [
+        { description: "x", amount: "60.00", position: 0 },
+        { description: "y", amount: "30.00", position: 1 },
+      ],
+    };
+    const result = readyBillSchema.safeParse(off);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const reconcileIssue = result.error.issues.find((i) => i.message === "totals_reconcile");
+      expect(reconcileIssue).toBeDefined();
+      expect(reconcileIssue?.path).toEqual(["totalAmount"]);
+    }
   });
 
-  it("hasReconciledLineItems handles trailing-zero normalization", () => {
-    // total_amount "100.00" should reconcile against [60, 40] regardless of trailing zeros
-    expect(
-      hasReconciledLineItems({ ...completeBill, totalAmount: "100.00" }, [
-        { amount: "60" },
-        { amount: "40.00" },
-      ]),
-    ).toBe(true);
+  it("trailing-zero normalization: '100.00' reconciles against ['60', '40.00']", () => {
+    const bill = {
+      ...completeBill,
+      totalAmount: "100.00",
+      lineItems: [
+        { description: "x", amount: "60", position: 0 },
+        { description: "y", amount: "40.00", position: 1 },
+      ],
+    };
+    expect(isReady(bill)).toBe(true);
   });
 
-  it("hasReconciledLineItems rejects malformed amount strings", () => {
-    expect(hasReconciledLineItems(completeBill, [{ amount: "sixty" }, { amount: "40.00" }])).toBe(
-      false,
-    );
+  it("rejects malformed amount strings (regex catches them before reconcile runs)", () => {
+    const bill = {
+      ...completeBill,
+      lineItems: [
+        { description: "x", amount: "sixty", position: 0 },
+        { description: "y", amount: "40.00", position: 1 },
+      ],
+    };
+    expect(isReady(bill)).toBe(false);
+    expect(missingPaths(bill)).toContain("lineItems");
   });
 
-  it("hasReconciledLineItems rejects empty/whitespace amount even when others sum to total", () => {
+  it("rejects empty/whitespace amount even when others sum to total", () => {
     // Catches the `Number("") === 0` parsing bug: a blank line item must not
-    // silently count as zero, even if the rest happen to sum exactly to
-    // total_amount.
-    expect(
-      hasReconciledLineItems(completeBill, [
-        { amount: "" },
-        { amount: "60.00" },
-        { amount: "40.00" },
-      ]),
-    ).toBe(false);
-    expect(
-      hasReconciledLineItems(completeBill, [
-        { amount: "   " },
-        { amount: "60.00" },
-        { amount: "40.00" },
-      ]),
-    ).toBe(false);
+    // silently count as zero. The decimal-format regex on `amount` rejects
+    // empty/whitespace before the totals refine even sees them.
+    const bill = {
+      ...completeBill,
+      lineItems: [
+        { description: "blank", amount: "", position: 0 },
+        { description: "x", amount: "60.00", position: 1 },
+        { description: "y", amount: "40.00", position: 2 },
+      ],
+    };
+    expect(isReady(bill)).toBe(false);
   });
 });
