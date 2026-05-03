@@ -9,7 +9,6 @@
   ],
   "functions": {
     "api/index.ts": {
-      "runtime": "@vercel/node@5",
       "includeFiles": "packages/backend/**"
     }
   }
