@@ -21,15 +21,9 @@ export const billStatus = pgEnum("bill_status", [
   "archived",
 ]);
 
-export const paymentStatus = pgEnum("payment_status", [
-  "pending",
-  "paid",
-  "cancelled",
-]);
+export const paymentStatus = pgEnum("payment_status", ["pending", "paid", "cancelled"]);
 
-export const paymentMethod = pgEnum("payment_method", [
-  "manual_off_platform",
-]);
+export const paymentMethod = pgEnum("payment_method", ["manual_off_platform"]);
 
 export const vendors = pgTable(
   "vendors",
@@ -118,9 +112,7 @@ export const payments = pgTable(
       .references(() => bills.id, { onDelete: "cascade" }),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     status: paymentStatus("status").default("pending").notNull(),
-    paymentMethod: paymentMethod("payment_method")
-      .default("manual_off_platform")
-      .notNull(),
+    paymentMethod: paymentMethod("payment_method").default("manual_off_platform").notNull(),
     paidAt: timestamp("paid_at"),
     reference: text("reference"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
