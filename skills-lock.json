@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "better-auth-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "better-auth/best-practices/SKILL.md",
+      "computedHash": "a4c830509e85557b59339d8d93a4e243e9e59c686e7678854d39230e12c2a6dc"
+    },
+    "better-auth-security-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "security/SKILL.md",
+      "computedHash": "5717187bba9c22030c7174c74012f01c359f21e2ce87e0eb80e24244d8b8c915"
+    },
+    "biome-developer": {
+      "source": "biomejs/biome",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/biome-developer/SKILL.md",
+      "computedHash": "3a9e05cb3f7254cc8adb9341716f3a056beaee54836f76bfd9968e71a510a513"
+    },
+    "email-and-password-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "better-auth/emailAndPassword/SKILL.md",
+      "computedHash": "747d7f73bd9e2ec5317b8ef88dc70f97df716d00e3d02de4051feebaa48b062d"
+    },
+    "feature-workflow": {
+      "source": "arraydude/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/feature-workflow/SKILL.md",
+      "computedHash": "cbef2770218deb4c478e59331ffa97a66e75b84cc977b165236ebc904ed266d3"
+    },
+    "react-query-best-practices": {
+      "source": "arraydude/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-query-best-practices/SKILL.md",
+      "computedHash": "18dde6e364506dc7acc0d5655df47d8c1d4d7776b313a754b2739f36b9981316"
+    },
+    "vite": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vite/SKILL.md",
+      "computedHash": "867ff66238f3152e9c494339ad08dc432dd0df5bcf5cc7a00b61a72b580eb908"
+    }
+  }
+}
