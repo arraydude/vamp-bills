@@ -1,0 +1,41 @@
+name: DB push to Neon
+
+on:
+  push:
+    branches: [main]
+
+# Serialize on the same ref. Do NOT cancel an in-flight push — a half-applied
+# schema is worse than waiting; better to let the previous run finish.
+concurrency:
+  group: db-push-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  push:
+    name: Sync Drizzle schema to Neon
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Match ci.yml + workspace root engines.node.
+          node-version: 20.19.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Push schema to Neon
+        # Run without --force so destructive changes (column drops, type
+        # narrowing) fail the build instead of silently dropping data. A human
+        # handles destructive cases manually; non-destructive diffs apply.
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: pnpm --filter @vamp-bills/backend db:push

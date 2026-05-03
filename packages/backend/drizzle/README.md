@@ -13,9 +13,24 @@ During the MVP/demo phase the project uses `pnpm db:push` (direct schema → DB 
 ## Workflow during demo phase
 
 1. Edit `packages/backend/src/db/app-schema.ts` (or `auth-schema.ts` via `pnpm auth:generate`).
-2. Run `pnpm db:push` to sync the change to your local DB (and Neon, when deploying).
+2. Run `pnpm db:push` to sync the change to your local DB.
 3. Run `pnpm db:generate --name <short_descriptive_name>` to commit the SQL diff alongside your schema change. Review the generated SQL — it should match what `db:push` actually did.
 4. Commit both the schema edit and the migration file.
+5. Open a PR → develop → main. **Neon syncs automatically** when the change reaches `main` (see "Auto-sync to Neon" below).
+
+## Auto-sync to Neon
+
+`.github/workflows/db-push.yml` runs `pnpm db:push` against Neon on every push to `main`. The workflow:
+
+- **Trigger**: `push` to `main` only — never on previews or `develop` (those would race against the shared production DB).
+- **Secret**: `NEON_DATABASE_URL` (a GitHub Actions secret on the repo). Holds the same connection string as `DATABASE_URL` in `.env.local`.
+- **Concurrency**: serialized — a second push to main waits for the first run to finish (no `cancel-in-progress`). A half-applied schema is worse than queueing.
+- **No `--force`**: drizzle-kit in non-TTY without `--force` rejects destructive changes (column drops, type narrowing) and exits non-zero. The Action goes red, the change does not land on Neon, and a human handles the destructive case with a manual `pnpm db:push --force` against the appropriate `DATABASE_URL`. This is the right tradeoff for shared infra at MVP scale: cost of one manual step on rare destructive PRs vs. risk of silently dropping a column.
+
+If a destructive change is intentional, the human path is:
+
+1. Run `DATABASE_URL=<neon-url> pnpm --filter @vamp-bills/backend db:push --force` locally.
+2. Merge the PR; the workflow will then re-run and find "no changes" since the destructive bit is already applied.
 
 ## When to graduate from this pattern
 
