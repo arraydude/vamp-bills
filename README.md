@@ -17,7 +17,7 @@ Application tables live in [`packages/backend/src/db/app-schema.ts`](./packages/
 The two commands actually used:
 
 - `pnpm db:generate` — emit SQL into [`packages/backend/drizzle/`](./packages/backend/drizzle/) for **review purposes only**. Run after a schema change so the PR diff includes the actual DDL reviewers can read. Pass `--name <descriptive_name>` so files land as `NNNN_<descriptive_name>.sql`. See [`packages/backend/drizzle/README.md`](./packages/backend/drizzle/README.md) for the "reference, not applied" caveat.
-- `pnpm db:push` — direct schema → DB sync against `DATABASE_URL`. Used for both local dev and Neon during demo phase.
+- `pnpm db:push` — direct schema → DB sync against `DATABASE_URL`. Used for local dev. Neon syncs **automatically** on every push to `main` via [`.github/workflows/db-push.yml`](./.github/workflows/db-push.yml) — no manual step needed for non-destructive changes; see [`packages/backend/drizzle/README.md`](./packages/backend/drizzle/README.md) for the destructive-change escape hatch.
 
 ## Stack
 
