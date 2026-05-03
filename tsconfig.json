@@ -1,9 +1,5 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "skipLibCheck": true,
-    "strict": true
-  }
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [{ "path": "./packages/design-system" }, { "path": "./packages/frontend" }]
 }
