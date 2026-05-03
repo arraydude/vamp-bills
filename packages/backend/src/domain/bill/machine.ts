@@ -8,9 +8,11 @@ export type BillMachineContext = {
   hasReconciledLineItems: boolean;
 };
 
-// Pure state machine for the bill lifecycle. Used server-side via
-// `machine.transition(snapshot, event)` — never as a running actor; we don't
-// need the actor model because state lives in the `bills.status` DB column.
+// Pure state machine for the bill lifecycle. Used server-side via the
+// package-root `transition(logic, snapshot, event)` helper from `xstate`
+// (see `transitions.ts`) — NOT `machine.transition()`, which requires the
+// caller to pass actor scope themselves. State lives in the `bills.status`
+// DB column; we never need the actor/interpreter runtime.
 //
 // Lifecycle reference: docs/mvp-scope.md "Bill state transitions" table.
 export const billMachine = setup({
