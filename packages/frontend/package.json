@@ -13,16 +13,26 @@
   },
   "dependencies": {
     "@tabler/icons-react": "^3.41.1",
+    "@tanstack/react-form": "^1.29.1",
+    "@tanstack/react-query": "^5.100.8",
+    "@tanstack/react-router": "^1.169.1",
+    "@tanstack/react-table": "^8.21.3",
+    "@trpc/client": "^11.17.0",
+    "@trpc/tanstack-react-query": "^11.17.0",
     "@workspace/ui": "workspace:*",
+    "better-auth": "1.4.21",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "zod": "^4.4.2"
   },
   "devDependencies": {
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/vite": "^4.2.4",
+    "@tanstack/router-plugin": "^1.167.32",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vamp-bills/backend": "workspace:*",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
     "typescript": "6.0.3",
