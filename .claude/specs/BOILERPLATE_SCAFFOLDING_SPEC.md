@@ -116,11 +116,13 @@ Recorded explicitly per `workflow-collaboration-loop`:
 | Design-system package name: keep `@workspace/ui` | Recommended | Avoids search-replacing every shadcn-generated import |
 | **Hosting: Vercel + Neon Postgres** (free tier) | User (preferred over Netlify) | One-platform deploy via git push; Vercel hosts both the Vite SPA *and* the Express backend (serverless function); Neon is a free, drizzle-compatible Postgres with one-click Vercel integration. Demo-grade only — no custom domain, no preview-env protection, no monitoring. |
 
-**Vercel deployment shape (for §3 awareness; actual deploy is a future spec):**
+**Vercel deployment shape (Phase 5 implements this):**
+- **Production branch:** `main` — Vercel auto-deploys to the canonical demo URL.
+- **Preview branch:** `develop` and every PR get their own preview URL (free Vercel hobby tier behavior).
 - Vite SPA → Vercel static output (default Vite preset).
 - Express backend → wrapped as a single Vercel serverless function via `api/index.ts` that re-exports the Express `app`. `vercel.json` rewrites `/trpc/*` and `/api/auth/*` to that function.
-- Postgres → Neon free tier, `DATABASE_URL` set as a Vercel env var.
-- BetterAuth `BETTER_AUTH_URL` set to the Vercel deployment URL; Google OAuth redirect added on the Google Cloud Console side.
+- Postgres → Neon free tier, `DATABASE_URL` set as a Vercel env var (single DB shared by prod + previews — fine for demo; in real apps preview deploys would use a branched DB).
+- BetterAuth `BETTER_AUTH_URL` set per-environment (production = canonical Vercel URL; previews can fall back to `VERCEL_URL`); Google OAuth redirect added for the canonical production URL.
 
 ### Target Folder Structure
 
@@ -265,7 +267,12 @@ npx -y @tanstack/intent install   # exact command per https://tanstack.com/inten
 - [ ] **Phase 4: Local End-to-End Verification** — DB up, auth tables, full roundtrip, builds clean
 - [ ] **Phase 5: Deploy to Vercel + Neon** — single Vercel project (frontend + Express serverless), Neon Postgres, public URL serves the same `health` roundtrip
 
-Phase 0 ships as the initial commit on `main`. Phases 1–5 will land on `feature/boilerplate-phase{1..5}` branches with one PR per phase.
+**Branch model** (per [`docs/contributing.md`](../../docs/contributing.md)):
+- `main` — production; Vercel deploys from here. Protected: PRs only.
+- `develop` — default integration branch; preview deploys.
+- `feature/boilerplate-phase{N}` → PR → `develop` → (when releasing) PR → `main`.
+
+Phase 0 shipped as the initial commit on `main` (before protection was enabled), then mirrored to `develop`. Phases 1–5 each land on `feature/boilerplate-phase{N}`, PR into `develop`, squash-merged. The whole boilerplate gets a single develop → main release at the end (or after Phase 4 if Phase 5 splits into its own deploy ticket).
 
 ---
 
