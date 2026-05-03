@@ -3,6 +3,7 @@ import { toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import express from "express";
 import { auth } from "./auth.ts";
+import { env } from "./env.ts";
 import { createContext } from "./trpc/context.ts";
 import { appRouter } from "./trpc/router.ts";
 
@@ -22,8 +23,6 @@ app.use(
   }),
 );
 
-const port = Number(process.env.PORT ?? 3000);
-
-app.listen(port, () => {
-  console.log(`backend listening on http://localhost:${port}`);
+app.listen(env.PORT, () => {
+  console.log(`backend listening on http://localhost:${env.PORT}`);
 });
