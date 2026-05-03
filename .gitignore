@@ -44,6 +44,7 @@ __pycache__/
 
 # Other agent-tool config dirs (regenerable from .agents/skills/ + skills-lock.json).
 # We keep .claude/ and .agents/ in version control; everything else is noise.
+.codex/
 .codebuddy/
 .commandcode/
 .continue/
