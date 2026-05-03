@@ -1,5 +1,5 @@
-// Re-exports the BetterAuth-generated schema. The auth-schema.ts file is
-// produced by `pnpm auth:generate` and contains the user/session/account/
-// verification tables. Application tables (Bills/Vendors/Payments) will be
-// added here in a follow-up spec.
+// Aggregates the BetterAuth-generated tables and the application tables.
+// `auth-schema.ts` is produced by `pnpm auth:generate` (do not hand-edit).
+// `app-schema.ts` holds the Bill Pay tables (vendors, bills, line items, payments).
 export * from "./auth-schema.ts";
+export * from "./app-schema.ts";

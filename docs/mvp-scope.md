@@ -52,6 +52,13 @@ A single-tenant AP app where users create bills (manually, via CSV bulk, or by u
 | `created_by` | ✓ | FK → users |
 | `created_at` / `updated_at` | ✓ | timestamps |
 
+> **Implementation notes (schema PR, [`packages/backend/src/db/app-schema.ts`](../packages/backend/src/db/app-schema.ts)):**
+> - The persisted `status` enum is `draft | awaiting_approval | approved | rejected | paid | archived`. The `Draft (Missing Info)` vs `Draft (Ready)` split is **derived** from required-field completeness at query/render time, not stored — keeps the enum honest. `approved` is the same persisted state the lifecycle calls "Awaiting payment" (per the diagram note above).
+> - `currency` is stored as a `text` column with default `'USD'` (not a constant) so future multi-currency doesn't require a migration.
+> - `invoice_number` uniqueness per vendor is **soft** — enforced in the bill-create mutation as a warning UX, not via a DB unique constraint. A composite `(vendor_id, invoice_number)` index supports the dup-check query.
+> - `total_amount == sum(line_items.amount)` is enforced in the bills mutation (single transaction), not via a DB constraint or trigger.
+> - All FKs to `vendors` and `user` are `ON DELETE RESTRICT` (deleting either is rejected while bills reference it). FKs from `bill_line_items` and `payments` to `bills` are `ON DELETE CASCADE`.
+
 ### Vendor entity
 
 | Field | Required | Notes |

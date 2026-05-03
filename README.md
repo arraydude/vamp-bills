@@ -8,6 +8,10 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 - Branching workflow: [`docs/contributing.md`](./docs/contributing.md)
 - Boilerplate spec (archived, completed 2026-05-03): [`.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md`](./.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md)
 
+## Database
+
+Application tables live in [`packages/backend/src/db/app-schema.ts`](./packages/backend/src/db/app-schema.ts) (`vendors`, `bills`, `bill_line_items`, `payments`) alongside the BetterAuth-generated tables in `auth-schema.ts`. Field-level definitions, status enums, and the bill/payment lifecycle are documented in [`docs/mvp-scope.md`](./docs/mvp-scope.md). Migrations are checked in under [`packages/backend/drizzle/`](./packages/backend/drizzle/) — generated with `pnpm db:generate`, applied with `pnpm db:push` for local dev.
+
 ## Stack
 
 | Layer | Choice |
