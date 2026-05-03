@@ -263,6 +263,22 @@ describe("readyBillSchema — single-source validation via drizzle-zod + refinem
     expect(missingPaths(bill)).toContain("lineItems");
   });
 
+  it("flags empty vendorId (notNull text accepts '' at the DB layer; refinement catches it)", () => {
+    expect(missingPaths({ ...completeBill, vendorId: "" })).toContain("vendorId");
+  });
+
+  it("flags empty approverId (same reason as vendorId)", () => {
+    expect(missingPaths({ ...completeBill, approverId: "" })).toContain("approverId");
+  });
+
+  it("rejects non-USD currency (MVP scope is USD-only)", () => {
+    const result = readyBillSchema.safeParse({ ...completeBill, currency: "EUR" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "currency")).toBe(true);
+    }
+  });
+
   it("rejects empty/whitespace amount even when others sum to total", () => {
     // Catches the `Number("") === 0` parsing bug: a blank line item must not
     // silently count as zero. The decimal-format regex on `amount` rejects
