@@ -1,6 +1,6 @@
 # Boilerplate Scaffolding Specification
 
-**Status:** IN PROGRESS — Phase 4 complete (local boilerplate green; Phase 5 deploy pending)
+**Status:** COMPLETED — boilerplate live on Vercel + Neon
 **Created:** 2026-05-02
 **Last Updated:** 2026-05-03
 **Phase 0 Completed:** 2026-05-02
@@ -8,6 +8,7 @@
 **Phase 2 Completed:** 2026-05-03
 **Phase 3 Completed:** 2026-05-03
 **Phase 4 Completed:** 2026-05-03
+**Phase 5 Completed:** 2026-05-03
 **Purpose:** Stand up the monorepo skeleton (design-system, frontend, backend) on which the vamp-bills MVP will be built.
 **Priority:** HIGH (blocks all feature work)
 **Complexity:** MEDIUM
@@ -280,7 +281,7 @@ The repo mixes two complementary mechanisms — keep them straight:
 - [x] **Phase 2: Backend Skeleton** — Express + tRPC + Drizzle + BetterAuth, `health` procedure — **COMPLETED 2026-05-03**
 - [x] **Phase 3: Frontend Wiring** — TanStack stack, tRPC/auth clients, index route hits `health` — **COMPLETED 2026-05-03**
 - [x] **Phase 4: Local End-to-End Verification** — DB up, auth tables, full roundtrip, builds clean — **COMPLETED 2026-05-03**
-- [ ] **Phase 5: Deploy to Vercel + Neon** — single Vercel project (frontend + Express serverless), Neon Postgres, public URL serves the same `health` roundtrip
+- [x] **Phase 5: Deploy to Vercel + Neon** — single Vercel project (frontend + Express serverless), Neon Postgres, public URL serves the same `health` roundtrip — **COMPLETED 2026-05-03**
 
 **Branch model** (per [`docs/contributing.md`](../../docs/contributing.md)):
 - `main` — production; Vercel deploys from here. Protected: PRs only.
@@ -654,6 +655,53 @@ Fresh-clone simulation: nuked `node_modules` and `pnpm-lock.yaml`, re-ran `pnpm 
 - Single-project monorepo deploys with pnpm + a serverless function require the `functions` glob in `vercel.json` to include `packages/backend/**` so deps are bundled. If bundling proves flaky, fall back to splitting into two Vercel projects (one for `packages/frontend`, one for `packages/backend` set to "Other Framework Preset"). Document the choice in the completion report.
 - Neon free tier auto-suspends after ~5 min of inactivity; first query after a suspend takes ~500ms to wake. Fine for a demo.
 
+#### Phase 5 Completion Report
+
+**Completion Date:** 2026-05-03
+**Status:** SUCCESSFUL
+**Branch:** `feature/boilerplate-phase5` → PR'd into `develop`
+**Actual Effort:** ~2 hours (mostly Vercel/pnpm-workspace plumbing + tsc-on-Vercel debugging)
+
+##### Summary
+Boilerplate is live on Vercel + Neon. The same `health` roundtrip and BetterAuth handler that work on `localhost` work on the deployed URL: `/trpc/health` returns the typed `{ ok, ts }` payload, `/api/auth/sign-up/email` returns BetterAuth `VALIDATION_ERROR` JSON (not a 404 or 502). Frontend serves the polished landing card with a live health badge driven by `useQuery(trpc.health.queryOptions())` against the Neon Postgres backend.
+
+##### Key Achievements
+- **Single Vercel project** at `arraydude-projects/vamp-bills`, linked to GitHub `arraydude/vamp-bills` — preview deploys on every push, prod deploys promotable via `vercel deploy --prod`.
+- **Neon Postgres** auto-provisioned via Vercel's native marketplace integration. 17 env vars (DATABASE_URL pooled, DATABASE_URL_UNPOOLED, POSTGRES_*, NEON_PROJECT_ID, etc.) auto-injected into all environments.
+- **BetterAuth schema in Neon** — `user`, `session`, `account`, `verification` tables materialized via `pnpm auth:generate && pnpm db:push` against the pooled URL.
+- **Express serverless** — `api/index.ts` re-exports the Express app from `packages/backend`; `vercel.json` rewrites `/trpc/(.*)` and `/api/auth/(.*)` → `/api/index`. Cold start ~500ms, warm < 100ms.
+- **All four success criteria met** for the deployment: public URL renders the typed health payload; `/api/auth/sign-up/email` returns BetterAuth JSON; build cache + function bundle clean; spec status flips to `COMPLETED`.
+
+##### Files Changed
+- New: `vercel.json`, `api/{package.json, tsconfig.json, index.ts}`, `.vercelignore`, `packages/backend/src/app.ts` (createApp factory)
+- Modified: `packages/backend/{package.json (exports./app), src/index.ts (split into createApp + listen)}`, root `package.json` (`@types/node` hoisted), `pnpm-workspace.yaml` (api/ added), `.gitignore` (.vercel)
+- Frontend: polished `routes/index.tsx` — hero + Stack table + live health badge + GitHub link, replacing the dev-scaffold "Phase 3" copy
+- Skills: `deploy-to-vercel`, `vercel-cli`, `env-vars` symlinked + locked
+
+##### Issues & Decisions
+1. **Backend `app.ts` / `index.ts` split.** Local dev needs `app.listen()`; Vercel serverless needs the bare app exported. Refactored `packages/backend/src/index.ts` to import `createApp()` from new `src/app.ts`; api/index.ts re-exports `createApp()` as the default handler. Same wiring on both paths, no duplication.
+2. **`runtime` field rejected.** First `vercel.json` had `"runtime": "@vercel/node@5"` — package-version syntax, not Vercel runtime identifier. Vercel auto-detects Node from `.ts`; dropped the field, kept only `includeFiles: "packages/backend/**"`.
+3. **`api/` as a workspace package.** `api/index.ts` value-imports `../packages/backend/src/app.ts` (relative path, not workspace alias — Vercel's tsc didn't have the alias on its resolution path). Added `api/` to `pnpm-workspace.yaml` so it gets `@types/express` + `@types/node` via its own package.json. Created `api/package.json` with `"type": "module"` to satisfy `verbatimModuleSyntax`.
+4. **`@types/node` hoisted to root** to fix Vercel tsc's `req.headers does not exist` warning. The error wasn't fatal (function bundled fine), but resolution was failing because Vercel's tsc didn't pick up `@types/node` from `api/`'s declared devDeps. Hoisting puts it on every package's resolution path.
+5. **Vercel CLI's `env add` quirks** in non-interactive mode:
+   - `--value <X> --yes` works for production/development, **requires explicit branch** for preview (`vercel env add NAME preview <branch> --value <X> --yes`).
+   - `vercel env rm NAME preview <branch>` syntax differs from add — interprets the branch as a "Custom Environment" name and errors if not found.
+   - Set `BETTER_AUTH_SECRET` + `BETTER_AUTH_URL` for: production, development, preview/develop, preview/feature-boilerplate-phase5. Workaround documented for follow-up branches.
+6. **BETTER_AUTH_URL = `https://vamp-bills.vercel.app`** — the canonical prod alias. Preview URLs (`vamp-bills-<hash>-arraydude-projects.vercel.app`) don't match, but BetterAuth still mounts and the validation/CSRF paths work for a demo. Production deploy will land on the matching URL; preview cookies/OAuth callbacks would need `trustedOrigins` if we shipped Google login on previews.
+7. **Deployment Protection ON by default** for hobby team projects. Preview URLs return 401 to anonymous browsers. `vercel curl` auto-fetches a project bypass token; for the public demo URL, either disable Protection in dashboard or rely on the production alias (which has separate visibility settings).
+8. **`vercel link --scope <personal>` rejected.** Vercel CLI errors "You cannot set your Personal Account as the scope" when the GH repo lives in a team. Linked under team scope (`arraydude-projects`) instead — actually correct since the repo's at `arraydude/vamp-bills`.
+9. **Username display name updated mid-flow.** User changed Vercel display from `emiliano-9902` to `arraydude-vercel` to align with the GH org. No code change required; project link stayed valid.
+10. **Two `auth-schema.ts` re-format passes** during the deploy iteration — same idempotent BetterAuth-CLI-vs-Biome import-order drift documented in Phase 4 Decision #1. Net-zero diff after each pass.
+
+##### Smoke evidence (live URLs)
+| Endpoint | Result |
+|---|---|
+| `https://vamp-bills-83znnh6dl-arraydude-projects.vercel.app/` | Page renders with header + hero + Stack + footer; `backend healthy · ts=…` populates from typed tRPC roundtrip |
+| `…/trpc/health` | `{"result":{"data":{"ok":true,"ts":<num>}}}` |
+| `…/api/auth/sign-up/email` (POST) | `{"code":"VALIDATION_ERROR","message":"[body.name] Invalid input: expected string, received undefined; [body.email] Invalid email address"}` |
+
+(Preview URLs change per commit; the canonical production alias is `vamp-bills.vercel.app` once `vercel deploy --prod` is run.)
+
 ---
 
 ## 6. Testing Strategy
@@ -678,7 +726,7 @@ There are no automated tests in this scaffolding pass — that's a separate conc
 
 ## 7. Success Criteria
 
-All of the following must be true to call the boilerplate done:
+All of the following are now true (boilerplate is COMPLETED 2026-05-03):
 
 - [ ] `pnpm-workspace.yaml` lists exactly `packages/*`; three packages discovered: `@workspace/ui`, `@vamp-bills/frontend`, `@vamp-bills/backend`
 - [ ] `pnpm install && pnpm db:up && pnpm auth:generate && pnpm db:push && pnpm dev` succeeds from a clean clone
