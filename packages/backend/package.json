@@ -6,7 +6,8 @@
   "exports": {
     "./trpc/router": {
       "types": "./src/trpc/router.ts"
-    }
+    },
+    "./app": "./src/app.ts"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
