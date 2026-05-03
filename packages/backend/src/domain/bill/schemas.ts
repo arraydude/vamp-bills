@@ -13,20 +13,6 @@ import { z } from "zod";
 // PR) and as the base shape for `readyBillSchema` below. Adding a column
 // to `bills` in app-schema.ts flows through here automatically — but if
 // it's a new server-managed column, add it to the omit list too.
-export const insertBillSchema = createInsertSchema(bills).omit({
-  id: true,
-  status: true,
-  createdBy: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export const insertLineItemSchema = createInsertSchema(billLineItems).omit({
-  id: true,
-  billId: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 const requiredText = (label: string) =>
   z
     .string()
@@ -36,6 +22,37 @@ const requiredText = (label: string) =>
 const decimalAmount = z.string().regex(/^\d+(\.\d{1,2})?$/, {
   message: "must be a non-negative decimal with up to 2 fractional digits",
 });
+
+// MVP scope is USD-only (docs/mvp-scope.md). The Drizzle column has
+// `default('USD')` and `notNull`, but text columns accept any string —
+// pin to the literal here so non-USD currency is rejected at the
+// *insert* layer too, not only at submit time. Otherwise drafts could
+// be persisted with `currency: 'EUR'` even though they could never be
+// successfully submitted.
+const usdLiteral = z.literal("USD");
+
+export const insertBillSchema = createInsertSchema(bills)
+  .omit({
+    id: true,
+    status: true,
+    createdBy: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    currency: usdLiteral,
+  });
+
+export const insertLineItemSchema = createInsertSchema(billLineItems)
+  .omit({
+    id: true,
+    billId: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    description: requiredText("line_item_description"),
+  });
 
 // "Ready to submit" — the spec's `Draft (Ready)` predicate. Layered on top of
 // the column shapes with domain refinements that sit above the DB level
@@ -52,15 +69,16 @@ export const readyBillSchema = insertBillSchema
     invoiceNumber: requiredText("invoice_number"),
     description: requiredText("description"),
     totalAmount: decimalAmount,
-    // MVP scope is USD-only (docs/mvp-scope.md). The Drizzle column has
-    // `default('USD')` and `notNull`, but text columns accept any string —
-    // pin to the literal here so `bills.create({ currency: 'EUR' })` is
-    // rejected at the schema layer rather than silently inserted.
-    currency: z.literal("USD"),
+    // currency: USD literal already enforced by insertBillSchema base.
     lineItems: z
       .array(
         z.object({
-          description: z.string(),
+          // description / amount validation lives on
+          // `insertLineItemSchema`, but we restate the shape here so the
+          // submit-time guard knows about line items as a unit. Adding
+          // requiredText keeps the constraint intact even if a future
+          // refactor changes how lineItems are spliced in.
+          description: requiredText("line_item_description"),
           amount: decimalAmount,
           position: z.number().int().nonnegative(),
         }),

@@ -3,9 +3,13 @@ import { type SnapshotFrom, setup } from "xstate";
 import type { BillEvent } from "./events.ts";
 import type { BillStatus } from "./status.ts";
 
+// Single-boolean derivation: callers run `isReady(bill)` from `schemas.ts`
+// (the source of truth for "is this bill submittable") and pass the result
+// here. We deliberately don't split into "fields present" + "totals
+// reconcile" sub-flags — the machine's only guard is "is the bill ready",
+// and surfacing finer-grained reasons is the schema's job (`missingPaths`).
 export type BillMachineContext = {
-  hasRequiredFields: boolean;
-  hasReconciledLineItems: boolean;
+  isReady: boolean;
 };
 
 // Pure state machine for the bill lifecycle. Used server-side via the
@@ -21,12 +25,12 @@ export const billMachine = setup({
     events: {} as BillEvent,
   },
   guards: {
-    isReady: ({ context }) => context.hasRequiredFields && context.hasReconciledLineItems,
+    isReady: ({ context }) => context.isReady,
   },
 }).createMachine({
   id: "bill",
   initial: "draft",
-  context: { hasRequiredFields: false, hasReconciledLineItems: false },
+  context: { isReady: false },
   states: {
     draft: {
       on: {

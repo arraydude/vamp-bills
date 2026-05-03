@@ -3,17 +3,15 @@ import { describe, expect, it } from "vitest";
 import type { BillEvent, BillEventType } from "./events.ts";
 import { isReady, missingPaths, readyBillSchema } from "./schemas.ts";
 import { BILL_STATUSES } from "./status.ts";
-import { attemptTransition, availableEvents, type TransitionDerived } from "./transitions.ts";
+import {
+  attemptTransition,
+  availableEvents,
+  derivedReadiness,
+  type TransitionDerived,
+} from "./transitions.ts";
 
-const READY: TransitionDerived = {
-  hasRequiredFields: true,
-  hasReconciledLineItems: true,
-};
-
-const NOT_READY: TransitionDerived = {
-  hasRequiredFields: false,
-  hasReconciledLineItems: false,
-};
+const READY: TransitionDerived = { isReady: true };
+const NOT_READY: TransitionDerived = { isReady: false };
 
 describe("billMachine — legal transitions (per mvp-scope.md lifecycle table)", () => {
   it.each<[string, Parameters<typeof attemptTransition>[0], BillEventType, string]>([
@@ -90,15 +88,10 @@ describe("billMachine — isReady guard on SUBMIT", () => {
     if (!result.ok) expect(result.kind).toBe("guard_failed");
   });
 
-  it("rejects SUBMIT when fields present but totals don't reconcile — kind: guard_failed", () => {
-    const result = attemptTransition(
-      "draft",
-      { type: "SUBMIT" },
-      { hasRequiredFields: true, hasReconciledLineItems: false },
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.kind).toBe("guard_failed");
-  });
+  // (Previously this test split "fields present" vs "totals don't reconcile"
+  // as separate boolean flags; the machine now consults a single
+  // `isReady` boolean per `BillMachineContext`. The schema-side
+  // `missingPaths()` test below asserts the per-blocker breakdown.)
 
   it("accepts SUBMIT when both flags true", () => {
     const result = attemptTransition("draft", { type: "SUBMIT" }, READY);
@@ -181,6 +174,29 @@ describe("BILL_STATUSES — single source from Drizzle pgEnum", () => {
     expect([...BILL_STATUSES].sort()).toEqual(
       ["approved", "archived", "awaiting_approval", "draft", "paid", "rejected"].sort(),
     );
+  });
+});
+
+describe("derivedReadiness — bridge from schema validation to machine context", () => {
+  it("returns { isReady: true } for a complete + reconciled bill", () => {
+    const bill = {
+      vendorId: "v1",
+      invoiceNumber: "INV-001",
+      totalAmount: "100.00",
+      currency: "USD",
+      invoiceDate: "2026-05-01",
+      description: "test",
+      approverId: "u1",
+      lineItems: [
+        { description: "x", amount: "60.00", position: 0 },
+        { description: "y", amount: "40.00", position: 1 },
+      ],
+    };
+    expect(derivedReadiness(bill)).toEqual({ isReady: true });
+  });
+
+  it("returns { isReady: false } for an incomplete bill", () => {
+    expect(derivedReadiness({})).toEqual({ isReady: false });
   });
 });
 

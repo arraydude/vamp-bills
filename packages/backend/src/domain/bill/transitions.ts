@@ -2,14 +2,23 @@ import { getNextTransitions, transition as runTransition } from "xstate";
 
 import type { BillEvent, BillEventType } from "./events.ts";
 import { type BillMachineContext, billMachine } from "./machine.ts";
+import { isReady } from "./schemas.ts";
 import type { BillStatus } from "./status.ts";
 
+// Re-export from schemas.ts as the canonical helper to derive readiness.
+// Callers compute it once per request and pass it to attemptTransition /
+// availableEvents — no duplicated validation logic in routers/UI.
 export type TransitionDerived = BillMachineContext;
+
+export function derivedReadiness(bill: unknown): TransitionDerived {
+  return { isReady: isReady(bill) };
+}
 
 // Discriminated failure so callers (routers, UI) can distinguish "this button
 // is wrong for this status" from "the form is incomplete." `wrong_state` →
 // 4xx with a state-mismatch message. `guard_failed` → router should also
-// return `missingFields(...)` so the UI can surface what's blocking.
+// return `missingPaths(bill)` from schemas.ts so the UI can surface what's
+// blocking.
 export type TransitionResult =
   | { ok: true; nextStatus: BillStatus }
   | { ok: false; kind: "wrong_state"; reason: string }
