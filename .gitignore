@@ -70,3 +70,8 @@ __pycache__/
 # Root-level skills/ is a symlink view; canonical files live in .agents/skills/
 /skills/
 
+
+# From shadcn init
+.pnp
+.pnp.js
+*.pem

@@ -1,0 +1,9 @@
+packages:
+  - "packages/*"
+
+# pnpm 10+ requires explicit approval for postinstall scripts. esbuild ships
+# a native binary it must download/build; without this it silently fails at
+# runtime ("Cannot find module 'esbuild-darwin-arm64'").
+onlyBuiltDependencies:
+  - esbuild
+
