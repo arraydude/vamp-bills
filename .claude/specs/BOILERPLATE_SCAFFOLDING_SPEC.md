@@ -1,10 +1,11 @@
 # Boilerplate Scaffolding Specification
 
-**Status:** IN PROGRESS — Phase 1 complete
+**Status:** IN PROGRESS — Phase 2 complete
 **Created:** 2026-05-02
-**Last Updated:** 2026-05-02
+**Last Updated:** 2026-05-03
 **Phase 0 Completed:** 2026-05-02
 **Phase 1 Completed:** 2026-05-02
+**Phase 2 Completed:** 2026-05-03
 **Purpose:** Stand up the monorepo skeleton (design-system, frontend, backend) on which the vamp-bills MVP will be built.
 **Priority:** HIGH (blocks all feature work)
 **Complexity:** MEDIUM
@@ -262,8 +263,8 @@ npx -y @tanstack/intent install   # exact command per https://tanstack.com/inten
 ### Progress Tracker
 
 - [x] **Phase 0: Repo Foundation** — git init, .gitignore, .env.example, docker-compose, agent skills, spec — **COMPLETED 2026-05-02** (commit `f04c827`)
-- [x] **Phase 1: Design System + Frontend Skeleton** — shadcn init, restructure to flat `packages/*`, Biome — **COMPLETED 2026-05-02** (PR pending into `develop`)
-- [ ] **Phase 2: Backend Skeleton** — Express + tRPC + Drizzle + BetterAuth, `health` procedure
+- [x] **Phase 1: Design System + Frontend Skeleton** — shadcn init, restructure to flat `packages/*`, Biome — **COMPLETED 2026-05-02** (PR #1 squash-merged into `develop` as `c1e9f4c`)
+- [x] **Phase 2: Backend Skeleton** — Express + tRPC + Drizzle + BetterAuth, `health` procedure — **COMPLETED 2026-05-03**
 - [ ] **Phase 3: Frontend Wiring** — TanStack stack, tRPC/auth clients, index route hits `health`
 - [ ] **Phase 4: Local End-to-End Verification** — DB up, auth tables, full roundtrip, builds clean
 - [ ] **Phase 5: Deploy to Vercel + Neon** — single Vercel project (frontend + Express serverless), Neon Postgres, public URL serves the same `health` roundtrip
@@ -431,7 +432,7 @@ Generated the shadcn monorepo via the preset, restructured to the flat `packages
 - [ ] Scaffold `packages/backend/` with `package.json` and `tsconfig.json`
 - [ ] Install deps via `pnpm --filter @vamp-bills/backend add ...`
 - [ ] Implement `db/client.ts`, `auth.ts`, `trpc/{trpc,context,router}.ts`, `index.ts`
-- [ ] Add scripts: `dev: tsx watch src/index.ts`, `build: tsc`, `db:generate: drizzle-kit generate`, `db:push: drizzle-kit push`, `auth:generate: better-auth generate --output src/db/auth-schema.ts`
+- [ ] Add scripts: `dev: tsx watch src/index.ts`, `build: tsc`, `db:generate: drizzle-kit generate`, `db:push: drizzle-kit push`, `auth:generate: better-auth generate --output src/db/auth-schema.ts --yes` (the `better-auth` binary is provided by the `@better-auth/cli` dev dep, not the `better-auth` runtime package)
 - [ ] Run `pnpm db:up && pnpm auth:generate && pnpm db:push` — verify BetterAuth tables (`user`, `session`, `account`, `verification`) appear in pg
 - [ ] Run `pnpm --filter @vamp-bills/backend dev`; `curl http://localhost:3000/trpc/health` returns `{"result":{"data":{"ok":true,"ts":...}}}`
 - [ ] `curl -X POST http://localhost:3000/api/auth/sign-up/email -H 'content-type: application/json' -d '{"email":"x@y.z","password":"too-short"}'` returns a validation error (not 404) — confirms BetterAuth wired
@@ -439,6 +440,48 @@ Generated the shadcn monorepo via the preset, restructured to the flat `packages
 - [ ] `git add .claude/skills/` and commit
 
 **Verification:** Both endpoints respond as expected; `pnpm --filter @vamp-bills/backend build` compiles clean; backend skills present in `.claude/skills/`.
+
+#### Phase 2 Completion Report
+
+**Completion Date:** 2026-05-03
+**Status:** SUCCESSFUL
+**Branch:** `feature/boilerplate-phase2` → PR'd into `develop`
+**Actual Effort:** ~45 minutes
+
+##### Summary
+Stood up `packages/backend` (`@vamp-bills/backend`) with Express 5 + tRPC 11 + Drizzle ORM + BetterAuth. Local stack: `pnpm db:up && pnpm auth:generate && pnpm db:push && pnpm --filter @vamp-bills/backend dev` brings up Postgres with the four BetterAuth tables and a tRPC server on `:3000` whose `health` procedure returns `{ ok, ts }` and whose `/api/auth/*splat` endpoints respond with BetterAuth JSON.
+
+##### Key Achievements
+- 13 files of source under `packages/backend/`; package's `exports` map exposes `./trpc/router` for type-only consumption by the frontend (Phase 3 will add a workspace-level dev-dep + type-only `import type { AppRouter }`).
+- Three root scripts delegate to backend: `db:generate`, `db:push`, `auth:generate`. Existing `db:up` + `db:down` already covered docker postgres.
+- BetterAuth-generated schema is the only schema for now; re-exported from `src/db/schema.ts` so application tables (Bills/Vendors/Payments) can be added alongside in a follow-up.
+- All workspace gates green: `pnpm typecheck`, `pnpm check` (Biome + ESLint per-package), `pnpm exec biome ci .`, `pnpm --filter @vamp-bills/backend build`.
+
+##### Files Changed
+- New: `packages/backend/{package.json, tsconfig.json, eslint.config.mjs, drizzle.config.ts}`, `packages/backend/src/{env.ts, auth.ts, index.ts}`, `packages/backend/src/db/{client.ts, schema.ts, auth-schema.ts}`, `packages/backend/src/trpc/{trpc.ts, context.ts, router.ts}`
+- Modified: root `package.json` (3 scripts), `pnpm-lock.yaml`
+- Skills added (3 symlinks under `.claude/skills/`, canonical content under `.agents/skills/`): `drizzle-orm`, `trpc`, `postgres-drizzle`
+- Spec: this completion report + Progress Tracker checkbox + Last Updated bump
+
+##### Issues & Decisions
+
+1. **BetterAuth ↔ CLI version skew.** Pinned `better-auth@1.4.21` (not `^1.6.x`) because `@better-auth/cli`'s latest stable is `1.4.21` and the CLI fails to load the auth config under 1.6.x (`better-call` peer mismatch — `kAPIErrorHeaderSymbol` not exported). Bump both together when the CLI catches up.
+2. **`auth:generate` binary.** The `better-auth` CLI binary is provided by the `@better-auth/cli` dev-dep (not the `better-auth` runtime package). Spec line above amended.
+3. **Express 5 wildcard syntax.** Mounted BetterAuth at `/api/auth/*splat` (named wildcard) — Express 5 dropped the bare `*` form. Easy to miss; `app.use('/api/auth', ...)` would also work but the explicit splat matches what `path-to-regexp@8` expects.
+4. **Mount order in `src/index.ts`.** Both `toNodeHandler(auth)` and `createExpressMiddleware` read the raw request body, so the index.ts deliberately omits any global JSON body parser. CORS sits in front (default permissive — Phase 3 uses Vite proxy, so the browser sees same-origin and credentialed CORS isn't needed yet).
+5. **Drizzle dialect string is `'postgresql'`** (Drizzle Kit) but BetterAuth's adapter uses `provider: 'pg'` — same DB, different libraries, easy to swap by mistake. Both pinned in source so future edits don't drift.
+6. **Schema re-export pattern.** `src/db/schema.ts` re-exports `./auth-schema.ts`; the latter is overwritten by `auth:generate`. A pre-generate stub `export {};` keeps `tsc --noEmit` green on a fresh clone before `auth:generate` runs.
+7. **Headers conversion for tRPC context.** Used `fromNodeHeaders(req.headers)` from `better-auth/node` instead of building a `Headers` object manually — keeps the context one-liner and avoids a `lib: ['DOM']` addition just for `HeadersInit`.
+8. **Conditional Google OAuth.** `src/auth.ts` only includes the `socialProviders.google` block if both env vars are non-empty. Lets local dev (no Google credentials) work and lets Phase 5 light up Google by setting env vars on Vercel.
+9. **Backend `build: tsc` is effectively a typecheck.** The base `tsconfig` has `noEmit: true`, which the backend tsconfig inherits. dev runs via `tsx`; Phase 5's Vercel deploy will compile through `@vercel/node`. Emitting JS via `tsc` would require overriding `noEmit` and disabling `allowImportingTsExtensions` — not worth the churn for a target that nothing currently consumes.
+10. **Skills source substitution.** Original spec listed `bobmatnyc/claude-mpm-skills@{drizzle-orm, drizzle-migrations, trpc-type-safety}` — those have been removed from that repo (only `mcp-protocol-builder` ships now). Substituted with `mindrally/skills@drizzle-orm`, `mindrally/skills@trpc`, `ccheney/robust-skills@postgres-drizzle` (covers postgres + drizzle migrations), per spec §4's allowance.
+
+##### Skills Installed (with hashes from `skills-lock.json`)
+| Skill | Source |
+|---|---|
+| `drizzle-orm` | `mindrally/skills` |
+| `trpc` | `mindrally/skills` |
+| `postgres-drizzle` | `ccheney/robust-skills` |
 
 ---
 

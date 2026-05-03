@@ -25,6 +25,18 @@
       "skillPath": ".claude/skills/biome-developer/SKILL.md",
       "computedHash": "3a9e05cb3f7254cc8adb9341716f3a056beaee54836f76bfd9968e71a510a513"
     },
+    "create-auth-skill": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "better-auth/create-auth/SKILL.md",
+      "computedHash": "31c027d02dbf1faa37f58191f574b9443143042fb2b684fe32df53ab0270487c"
+    },
+    "drizzle-orm": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "drizzle-orm/SKILL.md",
+      "computedHash": "8c96d6e1bbfaad8453371b4727f2bfa73febe9686c75997fd502e38981da211f"
+    },
     "email-and-password-best-practices": {
       "source": "better-auth/skills",
       "sourceType": "github",
@@ -43,11 +55,35 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
     },
+    "organization-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "better-auth/organization/SKILL.md",
+      "computedHash": "79a5a85b43d10e9fe37582b3506b051a33a991817b938f349099baa5ddba21aa"
+    },
+    "postgres-drizzle": {
+      "source": "ccheney/robust-skills",
+      "sourceType": "github",
+      "skillPath": "skills/postgres-drizzle/SKILL.md",
+      "computedHash": "60534e1aa880981e26360db836115df77a8e73be219c7a027e635802686b5bd9"
+    },
     "react-query-best-practices": {
       "source": "arraydude/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/react-query-best-practices/SKILL.md",
       "computedHash": "18dde6e364506dc7acc0d5655df47d8c1d4d7776b313a754b2739f36b9981316"
+    },
+    "trpc": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "trpc/SKILL.md",
+      "computedHash": "c806ba379dcdbf2020d02ad36f24811d8b7435f34338d896a0fcb91db03ab0b5"
+    },
+    "two-factor-authentication-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "better-auth/twoFactor/SKILL.md",
+      "computedHash": "7e297aaf887e11fdc03e52bdbf44974e161e8f7c393170ced7dc66cace4f6d46"
     },
     "vercel-composition-patterns": {
       "source": "vercel-labs/agent-skills",
