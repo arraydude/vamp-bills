@@ -399,6 +399,9 @@ Generated the shadcn monorepo via the preset, restructured to the flat `packages
 4. **Biome's `noNonNullAssertion` flagged shadcn's idiomatic `getElementById("root")!` in `main.tsx`.** Resolution: added a single `// biome-ignore` comment with rationale (`index.html guarantees #root exists`); kept the rule on globally.
 5. **Schema version mismatch warning.** Updated `biome.json`'s `$schema` URL from `2.2.0` to `2.4.14` to match the installed Biome.
 6. **Dropped `turbo`** from shadcn's template after reviewing. The original spec just said "pnpm workspaces", and on inspection: `pnpm -r --parallel <script>` covers our parallel-dev needs, the design system is source-imported (no build dep graph for turbo to resolve), and the typecheck cache (~1.5s saved) doesn't justify the dep for a project this size. Re-adding `turbo.json` is a 5-min job in Phase 5 if Vercel's Remote Cache materially speeds up deploys.
+7. **Enabled React Compiler.** Added `babel-plugin-react-compiler` to `@vitejs/plugin-react` so React 19's auto-memo handles `useMemo`/`useCallback`/`React.memo` for us. Bundle cost: +1.5 KB JS (compiler runtime). Build cost: ~50% slower (one extra Babel pass) — still ~800ms total. Stayed on **Vite 7** rather than chasing Vite 8; Vite 8's Rolldown/Oxc switch is fresh and adds 15 MB of install size, ecosystem hasn't fully shaken out yet, easy to upgrade later.
+8. **Added GitHub Actions CI** (`.github/workflows/ci.yml`): runs `biome ci`, `pnpm typecheck`, and `pnpm build` on every PR to `develop`/`main` and every push to those branches. Uses pnpm 10.9.0 and Node 20 with concurrency cancel-in-progress.
+9. **Removed dead `/* eslint-disable react-refresh/only-export-components */`** from `theme-provider.tsx` — leftover from shadcn's ESLint setup, meaningless now that we're on Biome.
 
 ---
 
