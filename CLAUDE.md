@@ -29,11 +29,53 @@ const cast = (lib.fn as any)(arg);
 ```
 
 Acceptable reasons: a third-party type is provably wrong, a complex generic
-inference is fighting you for no real safety gain, or a code-generation
-output (e.g., `routeTree.gen.ts` — already in eslint ignores).
+inference is fighting you for no real safety gain, a code-generation output
+(e.g., `routeTree.gen.ts` — already in eslint ignores), or an inherently
+heterogeneous bag (tool registries, plugin config) where forcing `unknown`
+would just spread `as` casts to every call site.
 
 Never acceptable: "I don't feel like typing it", "the inference is hard",
 "it's just temporary".
+
+## Const enums, not `enum`
+
+Use `as const` objects with PascalCase + an inferred type alias. Don't reach
+for the TS `enum` keyword — it emits runtime IIFEs and trips over
+`verbatimModuleSyntax: true` (set in `tsconfig.base.json`).
+
+```ts
+export const BillStatus = {
+  Draft: "draft",
+  AwaitingApproval: "awaiting_approval",
+  Approved: "approved",
+  Rejected: "rejected",
+  Paid: "paid",
+  Archived: "archived",
+} as const;
+export type BillStatus = (typeof BillStatus)[keyof typeof BillStatus];
+```
+
+The string values must match the Drizzle `pgEnum` value tuple in
+[`packages/backend/src/db/app-schema.ts`](./packages/backend/src/db/app-schema.ts) —
+that's the source of truth at the DB level; the `as const` mirror is the
+source of truth on the TS side.
+
+## `type` vs `interface`
+
+Default to `type`. Use `interface` *only* when one type extends another — TS
+caches `interface extends` by name; `type X = A & B` is recomputed at every
+use ([performance notes](https://github.com/microsoft/TypeScript/wiki/Performance#preferring-interfaces-over-intersections)).
+This also avoids declaration-merging surprises for non-extending types.
+
+```ts
+// Preferred — interface for extension
+export interface Bill extends BillCore {
+  lineItems: BillLineItem[];
+}
+
+// Preferred — type for composition / narrowing
+export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
+```
 
 ## Other standing conventions
 
