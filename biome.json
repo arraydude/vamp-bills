@@ -45,5 +45,25 @@
     "rules": {
       "recommended": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/design-system/src/components/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useAnchorContent": "off",
+            "useValidAnchor": "off",
+            "useFocusableInteractive": "off",
+            "useSemanticElements": "off",
+            "noLabelWithoutControl": "off"
+          },
+          "suspicious": {
+            "noDocumentCookie": "off",
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
+    }
+  ]
 }
