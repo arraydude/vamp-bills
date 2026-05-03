@@ -502,7 +502,7 @@ Stood up `packages/backend` (`@vamp-bills/backend`) with Express 5 + tRPC 11 + D
 **Goal:** install the TanStack stack, tRPC client, and BetterAuth client in the frontend, and prove the FE↔BE roundtrip by rendering the value of `useQuery(trpc.health.queryOptions())` on the index route.
 
 **Files Modified:**
-- `packages/frontend/package.json` — add deps: `@tanstack/react-router`, `@tanstack/react-query`, `@tanstack/react-form`, `@tanstack/react-table`, `@trpc/client`, `@trpc/tanstack-react-query`, `zod`, `better-auth@1.4.21` (pinned in lockstep with the backend — see Phase 2 Decision #1); add devDeps `@tanstack/router-plugin` and `@vamp-bills/backend: workspace:*` (type-only via the backend's `exports.types`-only condition)
+- `packages/frontend/package.json` — add deps: `@tanstack/react-router`, `@tanstack/react-query`, `@tanstack/react-form`, `@tanstack/react-table`, `@trpc/client`, `@trpc/tanstack-react-query`, `zod` (preinstalled — unused in Phase 3, but the AppRouter type will reference it as soon as the first `.input(z.object(…))` validator lands on a backend procedure; pre-installing avoids a future install round at first use), `better-auth@1.4.21` (pinned in lockstep with the backend — see Phase 2 Decision #1); add devDeps `@tanstack/router-plugin` and `@vamp-bills/backend: workspace:*` (type-only via the backend's `exports.types`-only condition)
 - `packages/frontend/vite.config.ts` — add `tanstackRouter({ target: 'react', autoCodeSplitting: true })` plugin **before** `react()` (so generated route imports are rewritten before React's Babel pass); add `server.proxy['/trpc']` and `server.proxy['/api/auth']` → `http://localhost:3000`
 - `packages/frontend/src/main.tsx` — providers chain `ThemeProvider > QueryClientProvider > TRPCProvider > RouterProvider`
 - *(no `.gitignore` change)* — `packages/frontend/src/routeTree.gen.ts` is regenerated on dev/build but is **committed** so workspace `tsc -b --noEmit` and `vite build` resolve `./routeTree.gen.ts` from `src/router.ts` without needing a pre-build codegen step in CI
@@ -549,7 +549,7 @@ Wired the frontend (`@vamp-bills/frontend`) to the Phase 2 backend. Browser at `
 
 ##### Files Changed
 - New: `packages/frontend/src/{lib/{trpc,trpc-client,auth-client,query-client}.ts, router.ts, routes/{__root,index}.tsx}`
-- Modified: `packages/frontend/{package.json, vite.config.ts, src/main.tsx}`, `.gitignore` (exclude `routeTree.gen.ts`)
+- Modified: `packages/frontend/{package.json, vite.config.ts, src/main.tsx}`, root `package.json` (`engines.node` bumped to `>=20.19` to match TanStack Router's requirement)
 - Deleted: `packages/frontend/src/App.tsx`
 - Modified: spec Phase 3 section + §4 (skill model clarification), `README.md` (Stack table, Getting started, Scripts, proxy note)
 
