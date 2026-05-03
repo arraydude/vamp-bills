@@ -4,8 +4,8 @@
 @import "@fontsource-variable/noto-sans";
 
 @custom-variant dark (&:is(.dark *));
-@source "../../../apps/**/*.{ts,tsx}";
-@source "../../../components/**/*.{ts,tsx}";
+/* Design-system source. Sibling packages are auto-discovered by
+   @tailwindcss/vite via the module graph (frontend imports this file). */
 @source "../**/*.{ts,tsx}";
 
 @theme inline {
