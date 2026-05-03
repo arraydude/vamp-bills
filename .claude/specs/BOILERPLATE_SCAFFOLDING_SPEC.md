@@ -398,7 +398,7 @@ Generated the shadcn monorepo via the preset, restructured to the flat `packages
 3. **Biome's CSS parser rejected `@apply` (Tailwind directive) by default.** Fix: `css.parser.tailwindDirectives: true` in `biome.json`.
 4. **Biome's `noNonNullAssertion` flagged shadcn's idiomatic `getElementById("root")!` in `main.tsx`.** Resolution: added a single `// biome-ignore` comment with rationale (`index.html guarantees #root exists`); kept the rule on globally.
 5. **Schema version mismatch warning.** Updated `biome.json`'s `$schema` URL from `2.2.0` to `2.4.14` to match the installed Biome.
-6. **Kept `turbo`** from shadcn's template even though the original spec just said "pnpm workspaces". Cost: one dev dep. Benefit: cached typecheck/build across packages, parallel `dev` for frontend + backend in Phase 2+.
+6. **Dropped `turbo`** from shadcn's template after reviewing. The original spec just said "pnpm workspaces", and on inspection: `pnpm -r --parallel <script>` covers our parallel-dev needs, the design system is source-imported (no build dep graph for turbo to resolve), and the typecheck cache (~1.5s saved) doesn't justify the dep for a project this size. Re-adding `turbo.json` is a 5-min job in Phase 5 if Vercel's Remote Cache materially speeds up deploys.
 
 ---
 

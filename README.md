@@ -10,7 +10,7 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 
 | Layer | Choice |
 |---|---|
-| Monorepo | pnpm workspaces + Turbo |
+| Monorepo | pnpm workspaces (no Turbo — `pnpm -r --parallel` is enough) |
 | Frontend | Vite + React 19, TanStack Router/Query/Form/Table |
 | Backend | Express + tRPC + Drizzle + BetterAuth *(Phase 2)* |
 | Design system | shadcn/ui (Base UI, Tailwind v4) — `@workspace/ui` |
@@ -40,9 +40,9 @@ pnpm dev                   # boot all packages in parallel via turbo
 
 | Command | What it does |
 |---|---|
-| `pnpm dev` | Boot all packages in parallel (turbo) |
-| `pnpm build` | Production build (turbo) |
-| `pnpm typecheck` | tsc --noEmit across packages (turbo) |
+| `pnpm dev` | Boot all packages in parallel (`pnpm -r --parallel dev`) |
+| `pnpm build` | Production build across packages |
+| `pnpm typecheck` | `tsc --noEmit` across packages |
 | `pnpm check` | Biome format + lint with auto-fix |
 | `pnpm format` | Biome format only |
 | `pnpm lint` | Biome lint only |
