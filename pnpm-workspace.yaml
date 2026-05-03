@@ -1,5 +1,6 @@
 packages:
   - "packages/*"
+  - "api"
 
 # pnpm 10+ requires explicit approval for postinstall scripts. esbuild ships
 # a native binary it must download/build; without this it silently fails at
