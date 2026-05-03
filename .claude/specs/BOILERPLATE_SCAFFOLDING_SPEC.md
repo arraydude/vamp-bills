@@ -364,7 +364,7 @@ Bootstrapped the repo from "docs only" to a clean initial commit on `main` conta
 - [x] Rename frontend package to `@vamp-bills/frontend`; leave design-system as `@workspace/ui`
 - [x] Add `@biomejs/biome` to root devDeps; write `biome.json` with Tailwind directives enabled and shadcn/agent dirs ignored
 - [x] Remove ESLint + Prettier configs and deps from all package.json files; root `prettier`, `prettier-plugin-tailwindcss` removed; per-package `eslint.config.js` deleted
-- [x] Add Biome scripts to root `package.json`: `format`, `lint`, `check`; keep `turbo dev/build/typecheck`
+- [x] Add Biome scripts to root `package.json`: `format`, `lint`, `check`; replace turbo orchestration with `pnpm -r [--parallel]` (Turbo was dropped in a follow-up commit — see decision #6 below)
 - [x] Replace shadcn's generic README.md with a vamp-bills project README
 - [x] Smoke: Vite dev server boots and serves on `localhost:5173` (HTTP 200); `pnpm check` exits 0; `pnpm typecheck` passes both packages; `pnpm build` produces a 233 KB JS / 22 KB CSS frontend bundle
 

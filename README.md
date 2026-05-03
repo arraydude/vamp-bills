@@ -33,7 +33,7 @@ packages/
 pnpm install
 cp .env.example .env       # fill in BETTER_AUTH_SECRET, GOOGLE_CLIENT_*
 pnpm db:up                 # start postgres on :5432
-pnpm dev                   # boot all packages in parallel via turbo
+pnpm dev                   # boot all packages in parallel (`pnpm -r --parallel`)
 ```
 
 ## Scripts
