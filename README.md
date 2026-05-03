@@ -2,6 +2,8 @@
 
 A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 
+**Live demo:** https://vamp-bills.vercel.app — landing page renders a typed `useQuery(trpc.health.queryOptions())` roundtrip through Vercel serverless → Neon Postgres. The `health: ok=true ts=…` line proves the FE↔BE seam is live in production. Press <kbd>d</kbd> to toggle dark mode.
+
 - Scope and lifecycle: [`docs/mvp-scope.md`](./docs/mvp-scope.md)
 - Branching workflow: [`docs/contributing.md`](./docs/contributing.md)
 - Boilerplate spec & progress: [`.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md`](./.claude/specs/BOILERPLATE_SCAFFOLDING_SPEC.md)
@@ -16,7 +18,7 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 | Design system | shadcn/ui (Base UI, Tailwind v4) — `@workspace/ui` |
 | Database | Postgres (Docker locally, Neon in prod) |
 | Tooling | Biome 2 (format + lint), ESLint 10, TypeScript 6 |
-| Hosting | Vercel (frontend + Express serverless) + Neon Postgres *(Phase 5)* |
+| Hosting | Vercel (frontend + Express serverless) + Neon Postgres |
 
 ## Structure
 
