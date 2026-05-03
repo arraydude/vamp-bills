@@ -39,6 +39,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Git worktrees (parallel checkouts, never tracked from the main checkout)
+.worktrees/
+
 # Claude Code local settings
 .claude/settings.local.json
 
