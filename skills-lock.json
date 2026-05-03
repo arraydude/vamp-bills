@@ -49,6 +49,12 @@
       "skillPath": "better-auth/emailAndPassword/SKILL.md",
       "computedHash": "747d7f73bd9e2ec5317b8ef88dc70f97df716d00e3d02de4051feebaa48b062d"
     },
+    "env-vars": {
+      "source": "vercel/vercel-plugin",
+      "sourceType": "github",
+      "skillPath": "skills/env-vars/SKILL.md",
+      "computedHash": "6609a1465198a97cbb9be4a620d465bf7654f5a2770d02f9f15029ab97623730"
+    },
     "feature-workflow": {
       "source": "arraydude/agent-skills",
       "sourceType": "github",
@@ -90,6 +96,12 @@
       "sourceType": "github",
       "skillPath": "better-auth/twoFactor/SKILL.md",
       "computedHash": "7e297aaf887e11fdc03e52bdbf44974e161e8f7c393170ced7dc66cace4f6d46"
+    },
+    "vercel-cli": {
+      "source": "vercel/vercel",
+      "sourceType": "github",
+      "skillPath": "skills/vercel-cli/SKILL.md",
+      "computedHash": "d45f913d342cd4eed63e586f194641882aeded904458428b267556b2110f71bb"
     },
     "vercel-composition-patterns": {
       "source": "vercel-labs/agent-skills",
