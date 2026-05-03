@@ -46,5 +46,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Test
+        # Runs vitest in any workspace package that defines a `test` script.
+        # pnpm -r skips packages without the script silently — backend has
+        # the bill domain unit tests; frontend / design-system don't define
+        # tests yet (when they do, the same step runs them automatically).
+        run: pnpm test
+
       - name: Build
         run: pnpm build
