@@ -13,7 +13,6 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @vamp-bills/backend db:generate",
-    "db:migrate": "pnpm --filter @vamp-bills/backend db:migrate",
     "db:push": "pnpm --filter @vamp-bills/backend db:push",
     "auth:generate": "pnpm --filter @vamp-bills/backend auth:generate",
     "prepare": "simple-git-hooks"

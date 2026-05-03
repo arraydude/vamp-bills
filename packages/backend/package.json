@@ -16,7 +16,6 @@
     "lint:eslint": "eslint . --max-warnings 0",
     "lint:eslint:fix": "eslint . --max-warnings 0 --fix",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "auth:generate": "better-auth generate --output src/db/auth-schema.ts --yes"
   },
