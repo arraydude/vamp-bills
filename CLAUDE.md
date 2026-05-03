@@ -97,5 +97,14 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   `@vamp-bills/backend/trpc/router` *type-only*. The backend's
   `package.json` `exports` map exposes only the `types` condition — value
   imports fail to resolve at the bundler. Don't try to "fix" that.
-- **Tests:** none yet. When they land, prefer integration tests against a
-  real Postgres (docker-compose), not mocks of the DB layer.
+- **Tests:** vitest. Pure-function tests sit alongside the module they cover
+  (e.g. `packages/backend/src/domain/bill/machine.test.ts`). Run with
+  `pnpm test`. Integration tests (when added) hit real Postgres via
+  docker-compose, never mocks of the DB layer.
+- **Domain logic:** state machines for entity lifecycles use **XState v5 as
+  a pure transition function** (server-side only — no FE dep). Status enums
+  are sourced from the Drizzle `pgEnum.enumValues` tuple, never duplicated.
+  Routers expose `availableActions` on entity outputs so the FE renders
+  buttons without importing the machine. See
+  [`packages/backend/src/domain/bill/`](./packages/backend/src/domain/bill/)
+  for the pattern.
