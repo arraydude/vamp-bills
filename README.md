@@ -8,6 +8,17 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 - Branching workflow: [`docs/contributing.md`](./docs/contributing.md)
 - Boilerplate spec (archived, completed 2026-05-03): [`.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md`](./.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md)
 
+## Database
+
+Application tables live in [`packages/backend/src/db/app-schema.ts`](./packages/backend/src/db/app-schema.ts) (`vendors`, `bills`, `bill_line_items`, `payments`) alongside the BetterAuth-generated tables in `auth-schema.ts`. Field-level definitions, status enums, and the bill/payment lifecycle are documented in [`docs/mvp-scope.md`](./docs/mvp-scope.md).
+
+**Schema sync — `db:push`, not migrations (demo phase).** During the MVP/demo phase the Drizzle schema files are the single source of truth and `pnpm db:push` syncs them to both local Postgres and Neon. We deliberately don't use the `drizzle-kit migrate` flow yet — there's no production data to protect, no team coordination problem to solve, and no rollback story we'd ever exercise. Before productionizing this app for real, switch to `drizzle-kit migrate` plus a baseline strategy on Neon (see [Drizzle migration docs](https://orm.drizzle.team/docs/migrations)).
+
+The two commands actually used:
+
+- `pnpm db:generate` — emit SQL into [`packages/backend/drizzle/`](./packages/backend/drizzle/) for **review purposes only**. Run after a schema change so the PR diff includes the actual DDL reviewers can read. Pass `--name <descriptive_name>` so files land as `NNNN_<descriptive_name>.sql`. See [`packages/backend/drizzle/README.md`](./packages/backend/drizzle/README.md) for the "reference, not applied" caveat.
+- `pnpm db:push` — direct schema → DB sync against `DATABASE_URL`. Used for both local dev and Neon during demo phase.
+
 ## Stack
 
 | Layer | Choice |
@@ -62,7 +73,7 @@ pnpm install
 cp .env.example .env       # fill in BETTER_AUTH_SECRET (openssl rand -base64 32), GOOGLE_CLIENT_*
 pnpm db:up                 # start postgres on :5432
 pnpm auth:generate         # generate BetterAuth Drizzle schema (first run only)
-pnpm db:push               # apply schema to local pg
+pnpm db:push               # sync schema to local pg
 pnpm dev                   # boot all packages in parallel (`pnpm -r --parallel`)
 ```
 
@@ -79,6 +90,6 @@ Frontend on `:5173` proxies `/trpc` and `/api/auth` to the backend on `:3000` (c
 | `pnpm format` | Biome format only |
 | `pnpm lint` | Biome lint only |
 | `pnpm db:up` / `db:down` | docker-compose postgres |
-| `pnpm db:generate` | Drizzle Kit — generate SQL migrations from schema |
-| `pnpm db:push` | Drizzle Kit — apply schema directly to the connected DB |
+| `pnpm db:generate` | Drizzle Kit — emit SQL into `drizzle/` for PR review (use `--name <descriptive>`); **not applied to any DB during demo phase** |
+| `pnpm db:push` | Drizzle Kit — direct schema → DB sync against `DATABASE_URL`; canonical sync command for both local and Neon during demo phase |
 | `pnpm auth:generate` | BetterAuth CLI — regenerate `packages/backend/src/db/auth-schema.ts` from `auth.ts` |

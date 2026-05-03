@@ -14,7 +14,11 @@
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @vamp-bills/backend db:generate",
     "db:push": "pnpm --filter @vamp-bills/backend db:push",
-    "auth:generate": "pnpm --filter @vamp-bills/backend auth:generate"
+    "auth:generate": "pnpm --filter @vamp-bills/backend auth:generate",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec biome check --staged --write --no-errors-on-unmatched && git update-index --again"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.14",
@@ -24,6 +28,7 @@
     "eslint-plugin-react-compiler": "19.1.0-rc.2",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^16.5.0",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.59.1"
   },
