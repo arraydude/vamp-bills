@@ -1,12 +1,13 @@
 # Boilerplate Scaffolding Specification
 
-**Status:** IN PROGRESS — Phase 3 complete
+**Status:** IN PROGRESS — Phase 4 complete (local boilerplate green; Phase 5 deploy pending)
 **Created:** 2026-05-02
 **Last Updated:** 2026-05-03
 **Phase 0 Completed:** 2026-05-02
 **Phase 1 Completed:** 2026-05-02
 **Phase 2 Completed:** 2026-05-03
 **Phase 3 Completed:** 2026-05-03
+**Phase 4 Completed:** 2026-05-03
 **Purpose:** Stand up the monorepo skeleton (design-system, frontend, backend) on which the vamp-bills MVP will be built.
 **Priority:** HIGH (blocks all feature work)
 **Complexity:** MEDIUM
@@ -278,7 +279,7 @@ The repo mixes two complementary mechanisms — keep them straight:
 - [x] **Phase 1: Design System + Frontend Skeleton** — shadcn init, restructure to flat `packages/*`, Biome — **COMPLETED 2026-05-02** (PR #1 squash-merged into `develop` as `c1e9f4c`)
 - [x] **Phase 2: Backend Skeleton** — Express + tRPC + Drizzle + BetterAuth, `health` procedure — **COMPLETED 2026-05-03**
 - [x] **Phase 3: Frontend Wiring** — TanStack stack, tRPC/auth clients, index route hits `health` — **COMPLETED 2026-05-03**
-- [ ] **Phase 4: Local End-to-End Verification** — DB up, auth tables, full roundtrip, builds clean
+- [x] **Phase 4: Local End-to-End Verification** — DB up, auth tables, full roundtrip, builds clean — **COMPLETED 2026-05-03**
 - [ ] **Phase 5: Deploy to Vercel + Neon** — single Vercel project (frontend + Express serverless), Neon Postgres, public URL serves the same `health` roundtrip
 
 **Branch model** (per [`docs/contributing.md`](../../docs/contributing.md)):
@@ -589,6 +590,32 @@ Wired the frontend (`@vamp-bills/frontend`) to the Phase 2 backend. Browser at `
 - [ ] Mark spec status → `COMPLETED` and update Last Updated date
 
 **Verification:** matches the local-only items in [§7](#7-success-criteria).
+
+#### Phase 4 Completion Report
+
+**Completion Date:** 2026-05-03
+**Status:** SUCCESSFUL (local boilerplate complete; full spec status flips to `COMPLETED` after Phase 5 ships the public Vercel URL)
+**Branch:** `feature/boilerplate-phase4` → PR'd into `develop`
+**Actual Effort:** ~10 minutes (mostly verification, not new code)
+
+##### Summary
+Fresh-clone simulation: nuked `node_modules` and `pnpm-lock.yaml`, re-ran `pnpm install && pnpm db:up && pnpm auth:generate && pnpm db:push && pnpm dev`. Full FE↔BE stack came up clean from a wiped state. All workspace gates green; local boilerplate is production-ready.
+
+##### Key Achievements
+- **Fresh `pnpm install` from scratch:** 11.2s, no errors. Lockfile picked up four caret-range bumps (`@tanstack/react-query` 5.100.8 → 5.100.9, `baseline-browser-mapping` 2.10.25 → 2.10.27, `rettime` 0.11.8 → 0.11.10, `yocto-spinner` 1.1.0 → 1.2.0). Same line count, same shape — bumps committed.
+- **DB reset roundtrip:** `docker compose down -v` → `pnpm db:up` → `auth:generate` → `db:push` recreated all 4 BetterAuth tables (`user`, `session`, `account`, `verification`) on a virgin volume.
+- **Parallel `pnpm dev`:** backend on `:3000` and frontend on `:5173` came up under `pnpm -r --parallel`. Browser at `localhost:5173` rendered the typed `health: ok=true ts=…` line. Console clean.
+- **All workspace gates green** post-rebuild: `pnpm typecheck` (3/3), `pnpm check` (Biome + ESLint), `pnpm build` (frontend 337 KB JS / 23 KB CSS / 47 KB routes in 334 ms), `pnpm exec biome ci .` (44 files, no fixes).
+
+##### Files Changed
+- Modified: `pnpm-lock.yaml` (4 patch/minor bumps from caret-ranged deps).
+- Modified: spec — this completion report; Phase 4 Progress Tracker checkbox flipped; status header bumped to "Phase 4 complete".
+
+##### Issues & Decisions
+1. **`auth:generate` import order doesn't match Biome's preference.** BetterAuth CLI emits `import { boolean, index, pgTable, text, timestamp }` in the order it walks types; Biome alphabetizes on `pnpm check`. Net effect: `pnpm auth:generate && pnpm check` is idempotent — the second pass just re-alphabetizes. Documented here so future agents don't chase a phantom drift after an `auth:generate` run.
+2. **Spec's "Mark spec status → `COMPLETED`" task held back to Phase 5.** §7 Success Criteria require a public Vercel URL serving the same health roundtrip and BetterAuth endpoints. Phase 4 only proves the *local* stack; the spec's overall `COMPLETED` flip is deferred until Phase 5 satisfies the deploy criteria. Status header reads "Phase 4 complete" for now.
+3. **Lockfile bumps committed.** Boilerplate lands at the most-current resolved versions so future `pnpm install --frozen-lockfile` reproduces what we just verified, and Phase 5 doesn't have to chase another round of patch bumps.
+4. **Untracked local junk left alone.** `.codex/` and `.agents/skills/ramp-bill-pay/` exist in my local working tree (one of my agent tools wrote them, not the boilerplate). Both are out of scope for this PR; not added to `.gitignore` here either, since they're personal-machine artifacts that may not show up on other contributors' machines.
 
 ---
 
