@@ -3,7 +3,7 @@ import { createContextInner } from "@vamp-bills/backend/trpc/context.ts";
 import { createCallerFactory } from "@vamp-bills/backend/trpc/trpc.ts";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { billsRouter } from "./bills.ts";
+import { billsRouter } from "./routes.ts";
 
 // Drizzle's chained query builder is mocked by intercepting the `db`
 // module. The chain returns itself for any method call and resolves to

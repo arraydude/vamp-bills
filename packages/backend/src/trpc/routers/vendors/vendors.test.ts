@@ -3,7 +3,7 @@ import { createContextInner } from "@vamp-bills/backend/trpc/context.ts";
 import { createCallerFactory } from "@vamp-bills/backend/trpc/trpc.ts";
 import { describe, expect, test } from "vitest";
 
-import { vendorsRouter } from "./vendors.ts";
+import { vendorsRouter } from "./routes.ts";
 
 // These tests exercise the protectedProcedure → UNAUTHORIZED gate without
 // touching the db. Anything past the auth check (the actual drizzle calls)
