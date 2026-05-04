@@ -109,12 +109,13 @@ Single role. No permissions matrix in MVP.
                       │
                       ▼
                 Awaiting payment ─── Edit any field ──▶ back to Awaiting approval
-                      │
-              ┌───────┴───────┐
-              ▼               ▼
-            Paid           Archived
-       (Mark as paid)     (terminal,
-                           no payment)
+                   ▲  │
+        Cancel ────┘  ▼
+                   ┌──────────────┐
+                   │              │
+                   ▼              ▼
+                  Paid         Archived
+            (Mark as paid)    (terminal)
 ```
 
 **Bill state transitions**
@@ -131,24 +132,23 @@ Single role. No permissions matrix in MVP.
 | `Approved` (i.e. `Awaiting payment`) | `Awaiting approval` | User edits *any* field on the bill |
 | `Awaiting payment` | `Paid` | User clicks Mark as paid |
 | `Awaiting payment` | `Archived` | User clicks Archive |
+| `Paid` | `Awaiting payment` | User clicks Cancel on a paid bill |
+| `Paid` | `Archived` | User clicks Archive on a paid bill |
 | `Draft` / `Rejected` | `Archived` | User clicks Archive |
-| `Paid` | (terminal) | — |
 | `Archived` | (terminal) | — |
 
 > **Edit-restarts-approval rule.** Any edit on a non-terminal bill (regardless of which field) returns it to `Awaiting approval`. Single rule, no per-field logic — keeps the model honest and the implementation trivial.
 
 **Payment state transitions**
 
-A Payment is auto-created when a Bill transitions to `Approved`.
+A Payment is created when the user clicks Mark as paid on an approved bill. The `pending` enum value is reserved in the schema for future scheduled-payment work but is not exercised in the MVP — bills transition straight from `Approved` to `Paid`, with the Payment row inserted at status `paid` in the same transaction.
 
 | From | To | Trigger |
 |---|---|---|
-| — | `pending` | Bill → Approved |
-| `pending` | `paid` | User clicks Mark as paid on the bill |
-| `pending` | `cancelled` | User clicks Cancel on the bill |
-| `cancelled` | `pending` | Re-approval creates a new Payment (don't transition the old one back) |
+| — | `paid` | User clicks Mark as paid (Bill: Approved → Paid; Payment row inserted) |
+| `paid` | `cancelled` | User clicks Cancel on a paid bill (Bill: Paid → Approved; Payment row marked cancelled) |
 
-> **Cancel vs. Archive.** Cancel voids the Payment (status → cancelled) but the bill returns to `Awaiting payment` — useful if user marked-paid by mistake or changed their mind. Archive closes the bill terminally and cancels any open Payment as a side effect.
+> **Cancel vs. Archive.** Cancel reverts a *paid* bill back to `Awaiting payment` and marks the Payment row `cancelled` — useful if the user marked-paid by mistake or changed their mind. The bill becomes payable again; calling Mark as paid a second time inserts a fresh Payment row (the cancelled one stays as audit trail). Archive closes the bill terminally; if it was paid, the Payment row stays `paid` since the bill genuinely was paid before being archived.
 
 ### UI surfaces
 
@@ -171,8 +171,9 @@ A Payment is auto-created when a Bill transitions to `Approved`.
   - Draft: `Submit for approval` (disabled if Missing Info), `Archive`
   - Awaiting approval: `Approve`, `Reject` (visible to approver only)
   - Rejected: `Edit & resubmit`, `Archive`
-  - Awaiting payment: `Mark as paid`, `Cancel` (no-op since no payment in flight; treated as "void payment record"), `Archive`, `Edit` (returns to Awaiting approval)
-  - Paid / Archived: read-only
+  - Awaiting payment: `Mark as paid`, `Archive`, `Edit` (returns to Awaiting approval)
+  - Paid: `Cancel` (reverts Paid → Awaiting payment, marks Payment cancelled), `Archive`
+  - Archived: read-only
 
 **Vendors page**
 - Simple CRUD list + form (name, email)

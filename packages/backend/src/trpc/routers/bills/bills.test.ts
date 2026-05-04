@@ -91,9 +91,22 @@ afterEach(() => {
 });
 
 describe("bills router — auth gate (UNAUTHORIZED)", () => {
+  const validCreateInput = {
+    vendorId: "v_1",
+    invoiceNumber: "INV-1",
+    totalAmount: "100.00",
+    currency: "USD" as const,
+    invoiceDate: "2026-01-01",
+    description: "test",
+    approverId: "user-approver",
+    lineItems: [{ description: "x", amount: "100.00", position: 0 }],
+  };
+
   test.each([
     ["list", () => createCaller(noUserCtx()).list()],
     ["getById", () => createCaller(noUserCtx()).getById({ id: "b_1" })],
+    ["create", () => createCaller(noUserCtx()).create(validCreateInput)],
+    ["update", () => createCaller(noUserCtx()).update({ id: "b_1", description: "changed" })],
     ["submit", () => createCaller(noUserCtx()).submit({ id: "b_1" })],
     ["approve", () => createCaller(noUserCtx()).approve({ id: "b_1" })],
     ["reject", () => createCaller(noUserCtx()).reject({ id: "b_1" })],
@@ -109,6 +122,10 @@ describe("bills router — auth gate (UNAUTHORIZED)", () => {
 });
 
 describe("bills router — authorization layer (FORBIDDEN)", () => {
+  // We exercise one creator-only and one approver-only path per the
+  // assertCreator/assertApprover seam — submit/edit/markPaid/cancelPayment
+  // share the same creator predicate, reject shares the same approver
+  // predicate, so a regression in any of them would fail one of these.
   test("archive throws FORBIDDEN when caller is not the creator", async () => {
     const { db } = await import("@vamp-bills/backend/db/client.ts");
     vi.mocked(db.select)
@@ -118,6 +135,21 @@ describe("bills router — authorization layer (FORBIDDEN)", () => {
 
     const caller = createCaller(asUser("someone-else"));
     await expect(caller.archive({ id: "b_1" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    } satisfies Partial<TRPCError>);
+  });
+
+  test("submit throws FORBIDDEN when caller is not the creator", async () => {
+    const { db } = await import("@vamp-bills/backend/db/client.ts");
+    vi.mocked(db.select)
+      .mockReturnValueOnce(mockChain([minimalBillRow]))
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([]));
+
+    // submit is a different creator-only path; covers the assertCreator
+    // wiring on the SUBMIT lifecycle entry.
+    const caller = createCaller(asUser("user-approver"));
+    await expect(caller.submit({ id: "b_1" })).rejects.toMatchObject({
       code: "FORBIDDEN",
     } satisfies Partial<TRPCError>);
   });
@@ -133,6 +165,21 @@ describe("bills router — authorization layer (FORBIDDEN)", () => {
     // creator must be rejected: only the approver can approve.
     const caller = createCaller(asUser("user-creator"));
     await expect(caller.approve({ id: "b_1" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    } satisfies Partial<TRPCError>);
+  });
+
+  test("reject throws FORBIDDEN when caller is not the approver", async () => {
+    const { db } = await import("@vamp-bills/backend/db/client.ts");
+    vi.mocked(db.select)
+      .mockReturnValueOnce(mockChain([{ ...minimalBillRow, status: "awaiting_approval" }]))
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([]));
+
+    // reject is a different approver-only path; covers the assertApprover
+    // wiring on the REJECT lifecycle entry.
+    const caller = createCaller(asUser("user-creator"));
+    await expect(caller.reject({ id: "b_1" })).rejects.toMatchObject({
       code: "FORBIDDEN",
     } satisfies Partial<TRPCError>);
   });

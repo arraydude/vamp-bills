@@ -2,15 +2,23 @@ import { TRPCError } from "@trpc/server";
 import { billLineItems, bills, payments, vendors } from "@vamp-bills/backend/db/app-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
 import type { BillEventType } from "@vamp-bills/backend/domain/bill/events.ts";
-import { insertBillSchema, insertLineItemSchema } from "@vamp-bills/backend/domain/bill/schemas.ts";
+import {
+  insertBillSchema,
+  insertLineItemSchema,
+  missingPaths,
+} from "@vamp-bills/backend/domain/bill/schemas.ts";
 import { type BillStatus, billStatusSchema } from "@vamp-bills/backend/domain/bill/status.ts";
+import { derivedReadiness } from "@vamp-bills/backend/domain/bill/transitions.ts";
+import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import {
   type AuthedCtx,
   assertApprover,
+  assertApproverExists,
   assertCreator,
+  assertVendorExists,
   type BillRow,
   type Bundle,
   type HydratedBill,
@@ -38,10 +46,26 @@ export const createInputShape = insertBillSchema.extend({
 });
 
 export type UpdateInput = z.infer<typeof updateInputShape>;
-export const updateInputShape = insertBillSchema.partial().extend({
-  id: z.string().min(1),
-  lineItems: z.array(insertLineItemSchema).optional(),
-});
+export const updateInputShape = insertBillSchema
+  .partial()
+  .extend({
+    id: z.string().min(1),
+    lineItems: z.array(insertLineItemSchema).optional(),
+  })
+  // Reject id-only payloads. Without this guard a no-op `bills.update({ id })`
+  // call still fires EDIT on an approved/rejected bill (round-tripping it back
+  // to awaiting_approval with no actual change). The Zod-level reject keeps
+  // the FE error contract uniform — same envelope as any other bad input.
+  .superRefine((val, ctx) => {
+    const { id: _id, lineItems, ...rest } = val;
+    const hasFieldPatch = Object.values(rest).some((v) => v !== undefined);
+    if (!hasFieldPatch && lineItems === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "at least one field must be provided to update",
+      });
+    }
+  });
 
 export const billIdInputShape = z.object({ id: z.string().min(1) });
 export type BillIdInput = z.infer<typeof billIdInputShape>;
@@ -82,9 +106,15 @@ export async function list({ input, ctx }: { input: ListInput | undefined; ctx: 
     .orderBy(desc(bills.createdAt));
 }
 
-export async function getById({ input }: { input: BillIdInput }): Promise<HydratedBill> {
+export async function getById({
+  input,
+  ctx,
+}: {
+  input: BillIdInput;
+  ctx: AuthedCtx;
+}): Promise<HydratedBill> {
   const bundle = await loadBundle(input.id);
-  return hydrate(bundle.bill, bundle.lineItems, bundle.payment);
+  return hydrate(bundle.bill, bundle.lineItems, bundle.payment, ctx.user.id);
 }
 
 export async function create({
@@ -95,6 +125,11 @@ export async function create({
   ctx: AuthedCtx;
 }): Promise<HydratedBill> {
   const { lineItems: items, ...billFields } = input;
+  // Pre-flight FK existence: turn typo'd ids into 4xx instead of letting the
+  // FK constraint surface as a 500 via the production-masking branch in the
+  // errorFormatter.
+  await assertVendorExists(billFields.vendorId);
+  await assertApproverExists(billFields.approverId);
   const created = await db.transaction(async (tx) => {
     const [billRow] = await tx
       .insert(bills)
@@ -112,7 +147,7 @@ export async function create({
       .returning();
     return { bill: billRow, lineItems: inserted };
   });
-  return hydrate(created.bill, created.lineItems, null);
+  return hydrate(created.bill, created.lineItems, null, ctx.user.id);
 }
 
 export async function update({
@@ -133,13 +168,39 @@ export async function update({
     });
   }
 
+  // FK pre-flight only when the patch actually changes those columns.
+  if (patch.vendorId !== undefined && patch.vendorId !== bundle.bill.vendorId) {
+    await assertVendorExists(patch.vendorId);
+  }
+  if (patch.approverId !== undefined && patch.approverId !== bundle.bill.approverId) {
+    await assertApproverExists(patch.approverId);
+  }
+
   const mergedItems = nextItems ?? bundle.lineItems;
   const mergedBill: BillRow = { ...bundle.bill, ...patch };
 
+  // Defense-in-depth readiness check on the merged shape: drafts may legally
+  // be incomplete (the user is still filling them in), but anything beyond
+  // draft must remain ready after the patch — otherwise the next APPROVE
+  // would be blocked by the machine guard with no way for the FE to surface
+  // *which* fields broke it. Surface the missingPaths via GuardFailedError so
+  // the frontend can highlight the offending fields.
+  if (bundle.bill.status !== "draft") {
+    const readiness = derivedReadiness({ ...mergedBill, lineItems: mergedItems });
+    if (!readiness.isReady) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "cannot update bill into a not-ready shape outside draft",
+        cause: new GuardFailedError(missingPaths({ ...mergedBill, lineItems: mergedItems })),
+      });
+    }
+  }
+
   let nextStatus: BillStatus = bundle.bill.status;
   if (bundle.bill.status === "approved" || bundle.bill.status === "rejected") {
-    // Status fires EDIT → awaiting_approval. EDIT is unguarded, so the
-    // only failure mode here is wrong_state, which we've ruled out above.
+    // Status fires EDIT → awaiting_approval. With the readiness check above,
+    // the merged bill is guaranteed ready, so the only remaining failure mode
+    // is wrong_state (already ruled out by the paid/archived early-return).
     nextStatus = transitionOrThrow(
       bundle.bill.status,
       { type: "EDIT" },
@@ -148,13 +209,20 @@ export async function update({
   }
 
   const updated = await db.transaction(async (tx) => {
+    // Optimistic lock via status equality. Without it, the auth/state checks
+    // happen on a bundle loaded outside the transaction, but the write only
+    // matches on `id`, which lets a concurrent archive/submit/approve be
+    // overwritten by this stale-snapshot patch.
     const [billRow] = await tx
       .update(bills)
       .set({ ...patch, status: nextStatus })
-      .where(eq(bills.id, id))
+      .where(and(eq(bills.id, id), eq(bills.status, bundle.bill.status)))
       .returning();
     if (!billRow) {
-      throw new TRPCError({ code: "NOT_FOUND", message: `bill ${id} not found` });
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "bill state changed; reload and retry",
+      });
     }
     let updatedItems = bundle.lineItems;
     if (nextItems !== undefined) {
@@ -167,20 +235,21 @@ export async function update({
     return { bill: billRow, lineItems: updatedItems };
   });
 
-  return hydrate(updated.bill, updated.lineItems, bundle.payment);
+  return hydrate(updated.bill, updated.lineItems, bundle.payment, ctx.user.id);
 }
 
 // ─── lifecycle factory ─────────────────────────────────────────────────────
 //
 // All seven lifecycle mutations (submit/approve/reject/markPaid/cancelPayment/
 // archive/edit) share the same body: load → assert role → transition → write
-// status → optional payment side effect → hydrate. The factory below
-// parameterizes the three things that vary (event, role, side effect) and
-// the routes.ts entries collapse to one declarative line each.
+// status (with optimistic lock) → optional payment side effect → hydrate. The
+// factory parameterizes the three things that vary (event, role, side effect)
+// so the routes.ts entries collapse to one declarative line each.
 //
-// `transitionOrThrow` returns the current status for unguarded self-actions
-// like CANCEL_PAYMENT; we skip the bills update when status doesn't change
-// so the no-op event is cheap and the intent is explicit.
+// `transitionOrThrow` may legally return the current status (no XState event
+// in this machine is currently a self-action, but defensive: we skip the
+// bills update when status doesn't change AND skip the side effect too, so a
+// future no-op event can't accidentally run a payment write).
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -233,21 +302,36 @@ export function lifecycle(
 
     const result = await db.transaction(async (tx) => {
       let updatedBill: BillRow = bundle.bill;
+      let payment = bundle.payment;
       if (nextStatus !== bundle.bill.status) {
+        // Optimistic lock: a concurrent lifecycle call (or update) can race
+        // between loadBundle() and this UPDATE. Filtering on the loaded
+        // status converts the race into a CONFLICT instead of letting
+        // either side overwrite the other's work (e.g. concurrent markPaid
+        // calls each inserting a payment row).
         const [row] = await tx
           .update(bills)
           .set({ status: nextStatus })
-          .where(eq(bills.id, input.id))
+          .where(and(eq(bills.id, input.id), eq(bills.status, bundle.bill.status)))
           .returning();
         if (!row) {
-          throw new TRPCError({ code: "NOT_FOUND", message: `bill ${input.id} not found` });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "bill state changed; reload and retry",
+          });
         }
         updatedBill = row;
+        // Side effects only fire on a real status transition. Defensive: no
+        // current event is a self-action, but tying the side effect to the
+        // status change prevents future no-op events from accidentally
+        // running a payment write.
+        if (sideEffect) {
+          payment = await sideEffect(tx, bundle);
+        }
       }
-      const payment = sideEffect ? await sideEffect(tx, bundle) : bundle.payment;
       return { bill: updatedBill, payment };
     });
 
-    return hydrate(result.bill, bundle.lineItems, result.payment);
+    return hydrate(result.bill, bundle.lineItems, result.payment, ctx.user.id);
   };
 }

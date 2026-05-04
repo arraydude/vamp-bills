@@ -139,11 +139,12 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   registered in [`packages/backend/src/trpc/trpc.ts`](./packages/backend/src/trpc/trpc.ts):
   throw `TRPCError({ code: "BAD_REQUEST", cause: new GuardFailedError(paths) })`
   and the FE reads them off `error.data.missingPaths`. Lifecycle
-  mutations return the hydrated bill shape directly (built inline in
-  `routers/bills.ts` via the local `hydrate()` helper), **never via
-  `createCaller`** — invoking `createCaller` inside a procedure re-runs
-  middleware and re-validates input (`@trpc/server#server-side-calls`
-  skill, HIGH-severity gotcha).
+  mutations return the hydrated bill shape directly (built inline via
+  the `hydrate()` helper in
+  [`routers/bills/helpers.ts`](./packages/backend/src/trpc/routers/bills/helpers.ts)),
+  **never via `createCaller`** — invoking `createCaller` inside a
+  procedure re-runs middleware and re-validates input
+  (`@trpc/server#server-side-calls` skill, HIGH-severity gotcha).
 - **tRPC Skills via `@tanstack/intent`.** The repo is intent-enabled
   for `@trpc/server`, `@trpc/client`, `@trpc/tanstack-react-query`,
   `@tanstack/router-core`, `@tanstack/router-plugin`, `dotenv`, and

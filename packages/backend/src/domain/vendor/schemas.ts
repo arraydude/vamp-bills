@@ -24,8 +24,8 @@ export const insertVendorSchema = createInsertSchema(vendors)
     updatedAt: true,
   })
   .extend({
-    name: requiredText("vendor_name"),
-    email: z.string().trim().email({ message: "vendor_email must be a valid email" }),
+    name: requiredText("name"),
+    email: z.string().trim().email({ message: "email must be a valid email" }),
   });
 
 export type InsertVendor = z.infer<typeof insertVendorSchema>;

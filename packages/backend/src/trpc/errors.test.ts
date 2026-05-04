@@ -1,105 +1,44 @@
-import { initTRPC, TRPCError } from "@trpc/server";
+import { TRPCError } from "@trpc/server";
+import type { DefaultErrorShape } from "@trpc/server/unstable-core-do-not-import";
 import { describe, expect, test } from "vitest";
-import { ZodError, z } from "zod";
+import { z } from "zod";
 
 import { GuardFailedError } from "./errors.ts";
+import { formatError } from "./trpc.ts";
 
-// Re-build a tiny tRPC instance with the same errorFormatter shape as
-// trpc.ts. We can't import the real one without dragging in the BetterAuth
-// context — and the formatter is small enough that duplicating it in the
-// test is clearer than mocking auth. If the real formatter changes shape,
-// this test should be updated in the same commit so the contract stays
-// pinned.
-const t = initTRPC.create({
-  errorFormatter({ shape, error }) {
-    return {
-      ...shape,
-      data: {
-        ...shape.data,
-        zodError:
-          error.code === "BAD_REQUEST" && error.cause instanceof ZodError
-            ? error.cause.flatten()
-            : null,
-        missingPaths:
-          error.cause instanceof GuardFailedError ? [...error.cause.missingPaths] : null,
-      },
-    };
-  },
-});
+// Pin the FE error contract against the *actual* exported `formatError` from
+// trpc.ts (not a duplicated copy). A regression in the masking branch or the
+// missingPaths/zodError lifting fails this test directly.
 
-describe("GuardFailedError → errorFormatter", () => {
+const stubShape = (path: string, code: TRPCError["code"], httpStatus: number): DefaultErrorShape =>
+  ({
+    code: -32600,
+    message: code,
+    data: { code, httpStatus, path },
+  }) as DefaultErrorShape;
+
+describe("GuardFailedError → formatError", () => {
   test("lifts missingPaths onto error.data.missingPaths", () => {
-    const router = t.router({
-      throws: t.procedure.query(() => {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "bill_not_ready",
-          cause: new GuardFailedError(["invoiceNumber", "approverId"]),
-        });
-      }),
+    const err = new TRPCError({
+      code: "BAD_REQUEST",
+      message: "bill_not_ready",
+      cause: new GuardFailedError(["invoiceNumber", "approverId"]),
     });
-
-    return router
-      .createCaller({})
-      .throws()
-      .then(
-        () => {
-          throw new Error("should have thrown");
-        },
-        (err: TRPCError) => {
-          expect(err).toBeInstanceOf(TRPCError);
-          expect(err.code).toBe("BAD_REQUEST");
-          // The formatter runs at the HTTP boundary, but we can apply it
-          // directly here to verify the contract.
-          const shape = router._def._config.errorFormatter({
-            error: err,
-            type: "query" as const,
-            path: "throws",
-            input: undefined,
-            ctx: {},
-            shape: {
-              code: -32600,
-              message: err.message,
-              data: { code: err.code, httpStatus: 400, path: "throws" },
-            },
-          });
-          expect(shape.data.missingPaths).toEqual(["invoiceNumber", "approverId"]);
-          expect(shape.data.zodError).toBeNull();
-        },
-      );
+    const shape = formatError(stubShape("throws", "BAD_REQUEST", 400), err, { isDev: true });
+    expect(shape.data.missingPaths).toEqual(["invoiceNumber", "approverId"]);
+    expect(shape.data.zodError).toBeNull();
   });
 
   test("zodError lifts when cause is a ZodError", () => {
     const inputSchema = z.object({ name: z.string().min(1) });
-    const router = t.router({
-      validates: t.procedure.input(inputSchema).query(() => "ok"),
-    });
+    const parsed = inputSchema.safeParse({ name: "" });
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
 
-    return router
-      .createCaller({})
-      .validates({ name: "" })
-      .then(
-        () => {
-          throw new Error("should have thrown");
-        },
-        (err: TRPCError) => {
-          expect(err.code).toBe("BAD_REQUEST");
-          const shape = router._def._config.errorFormatter({
-            error: err,
-            type: "query" as const,
-            path: "validates",
-            input: { name: "" },
-            ctx: {},
-            shape: {
-              code: -32600,
-              message: err.message,
-              data: { code: err.code, httpStatus: 400, path: "validates" },
-            },
-          });
-          expect(shape.data.zodError).not.toBeNull();
-          expect(shape.data.missingPaths).toBeNull();
-        },
-      );
+    const err = new TRPCError({ code: "BAD_REQUEST", message: "zod", cause: parsed.error });
+    const shape = formatError(stubShape("validates", "BAD_REQUEST", 400), err, { isDev: true });
+    expect(shape.data.zodError).not.toBeNull();
+    expect(shape.data.missingPaths).toBeNull();
   });
 
   test("GuardFailedError has the expected shape", () => {
@@ -108,5 +47,44 @@ describe("GuardFailedError → errorFormatter", () => {
     expect(err.name).toBe("GuardFailedError");
     expect(err.missingPaths).toEqual(["a", "b"]);
     expect(err.message).toBe("bill_not_ready");
+  });
+});
+
+describe("formatError — production masking branch", () => {
+  // The masking branch (`!isDev && code === 'INTERNAL_SERVER_ERROR'`) is
+  // exercised by passing `isDev: false` into `formatError` directly, which
+  // is the same call path the inline `errorFormatter` in trpc.ts uses.
+
+  test("masks INTERNAL_SERVER_ERROR messages outside development", () => {
+    const err = new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "secret SQL: SELECT * FROM bills WHERE password='hunter2'",
+    });
+    const shape = formatError(
+      { ...stubShape("x", "INTERNAL_SERVER_ERROR", 500), message: err.message },
+      err,
+      { isDev: false },
+    );
+    expect(shape.message).toBe("Internal server error");
+  });
+
+  test("preserves INTERNAL_SERVER_ERROR messages in development", () => {
+    const err = new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "boom" });
+    const shape = formatError(
+      { ...stubShape("x", "INTERNAL_SERVER_ERROR", 500), message: err.message },
+      err,
+      { isDev: true },
+    );
+    expect(shape.message).toBe("boom");
+  });
+
+  test("does not mask non-INTERNAL_SERVER_ERROR codes even outside dev", () => {
+    const err = new TRPCError({ code: "BAD_REQUEST", message: "bad input" });
+    const shape = formatError(
+      { ...stubShape("x", "BAD_REQUEST", 400), message: err.message },
+      err,
+      { isDev: false },
+    );
+    expect(shape.message).toBe("bad input");
   });
 });

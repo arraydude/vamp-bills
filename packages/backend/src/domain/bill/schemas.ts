@@ -46,9 +46,9 @@ export const insertBillSchema = createInsertSchema(bills)
     updatedAt: true,
   })
   .extend({
-    vendorId: requiredText("vendor"),
-    approverId: requiredText("approver"),
-    invoiceNumber: requiredText("invoice_number"),
+    vendorId: requiredText("vendorId"),
+    approverId: requiredText("approverId"),
+    invoiceNumber: requiredText("invoiceNumber"),
     description: requiredText("description"),
     currency: usdLiteral,
   });
@@ -61,7 +61,7 @@ export const insertLineItemSchema = createInsertSchema(billLineItems)
     updatedAt: true,
   })
   .extend({
-    description: requiredText("line_item_description"),
+    description: requiredText("description"),
   });
 
 // "Ready to submit" — the spec's `Draft (Ready)` predicate. Layered on top of
@@ -89,7 +89,7 @@ export const readyBillSchema = insertBillSchema
           // submit-time guard knows about line items as a unit. Adding
           // requiredText keeps the constraint intact even if a future
           // refactor changes how lineItems are spliced in.
-          description: requiredText("line_item_description"),
+          description: requiredText("description"),
           amount: decimalAmount,
           position: z.number().int().nonnegative(),
         }),
