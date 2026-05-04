@@ -9,7 +9,7 @@
   ],
   "functions": {
     "api/index.ts": {
-      "includeFiles": "{packages/backend/{src,drizzle}/**,node_modules/.pnpm/{@trpc+server*,better-auth*,cors*,dotenv*,drizzle-orm*,drizzle-zod*,express*,pg@*,xstate*,zod@*}/node_modules/**}"
+      "includeFiles": "{packages/backend/{src,drizzle,node_modules}/**,node_modules/.pnpm/{@trpc+server*,better-auth*,cors*,dotenv*,drizzle-orm*,drizzle-zod*,express*,pg@*,xstate*,zod@*}/node_modules/**}"
     }
   }
 }
