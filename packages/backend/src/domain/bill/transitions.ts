@@ -28,19 +28,45 @@ export type TransitionResult =
 // docs/mvp-scope.md "Bill detail page" → "State-appropriate primary actions".
 //
 // **Deliberate deviation from spec**: `awaiting_approval` includes ARCHIVE
-// even though the spec's lifecycle table (mvp-scope.md:113-128) and action
-// ribbon (mvp-scope.md:165) both omit it. We keep the machine more
-// permissive than the spec's documented UI surface so a submitter can pull
-// the plug on a pending-review bill without waiting for the approver — the
-// UI may render it through a kebab/overflow menu rather than the primary
-// ribbon. If the spec is tightened later, drop ARCHIVE from this row.
+// even though the spec's lifecycle table and action ribbon both omit it.
+// We keep the machine more permissive than the spec's documented UI surface
+// so a submitter can pull the plug on a pending-review bill without waiting
+// for the approver — the UI may render it through a kebab/overflow menu
+// rather than the primary ribbon.
+//
+// Cancel-only-when-cancellable: `CANCEL_PAYMENT` is offered only on `paid`
+// bills (where there's a payment row to void). Approving a bill no longer
+// creates a pending Payment, so exposing CANCEL_PAYMENT on `approved` would
+// advertise an action that always throws.
 const ACTION_ORDER: Record<BillStatus, readonly BillEventType[]> = {
   draft: ["SUBMIT", "ARCHIVE"],
   awaiting_approval: ["APPROVE", "REJECT", "ARCHIVE"],
-  approved: ["MARK_PAID", "CANCEL_PAYMENT", "ARCHIVE", "EDIT"],
+  approved: ["MARK_PAID", "ARCHIVE", "EDIT"],
   rejected: ["EDIT", "ARCHIVE"],
-  paid: [],
+  paid: ["CANCEL_PAYMENT", "ARCHIVE"],
   archived: [],
+};
+
+// Per-event actor authorization, mirroring `assertCreator` / `assertApprover`
+// in `routers/bills/helpers.ts`. Single source of truth so the action ribbon
+// only renders buttons the current user can actually invoke.
+//
+// Self-approve note: a bill where `createdBy === approverId === userId` (the
+// "Self-approved" demo flow) holds *both* roles. `availableEvents` takes a
+// Set of roles so the action ribbon shows the union of creator + approver
+// actions for that user — the original single-role enum collapsed
+// self-approved bills to creator-only and hid APPROVE/REJECT.
+type ActorRole = "creator" | "approver";
+type ActorRoles = ReadonlySet<ActorRole>;
+
+const EVENT_ALLOWED_BY_ROLE: Record<BillEventType, ReadonlySet<ActorRole>> = {
+  SUBMIT: new Set(["creator"]),
+  APPROVE: new Set(["approver"]),
+  REJECT: new Set(["approver"]),
+  MARK_PAID: new Set(["creator"]),
+  CANCEL_PAYMENT: new Set(["creator"]),
+  ARCHIVE: new Set(["creator"]),
+  EDIT: new Set(["creator"]),
 };
 
 // Resolve the persisted status into an XState snapshot, then classify:
@@ -90,10 +116,27 @@ export function attemptTransition(
 }
 
 // Which events the UI should render as available actions for a bill in this
-// state, given its derived readiness. Order matches the spec's action-ribbon
-// per state — see ACTION_ORDER above for the mapping rationale.
-export function availableEvents(current: BillStatus, derived: TransitionDerived): BillEventType[] {
+// state, given its derived readiness AND the current actor's role. Filtering
+// by role here keeps the FE action ribbon honest — non-approvers won't see
+// `APPROVE` / `REJECT`, non-creators won't see `MARK_PAID` / `ARCHIVE` /
+// `CANCEL_PAYMENT` / `EDIT`. Order matches the spec's action-ribbon per
+// state (see `ACTION_ORDER` above for the mapping rationale).
+export type { ActorRole, ActorRoles };
+export function availableEvents(
+  current: BillStatus,
+  derived: TransitionDerived,
+  roles: ActorRoles,
+): BillEventType[] {
   return ACTION_ORDER[current].filter((type) => {
+    const allowed = EVENT_ALLOWED_BY_ROLE[type];
+    let canAct = false;
+    for (const role of roles) {
+      if (allowed.has(role)) {
+        canAct = true;
+        break;
+      }
+    }
+    if (!canAct) return false;
     const result = attemptTransition(current, { type } as BillEvent, derived);
     return result.ok;
   });

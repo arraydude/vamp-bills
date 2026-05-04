@@ -31,6 +31,12 @@ const decimalAmount = z.string().regex(/^\d+(\.\d{1,2})?$/, {
 // successfully submitted.
 const usdLiteral = z.literal("USD");
 
+// FK + required-text refinements live here (not only on `readyBillSchema`)
+// because the DB enforces them too — the FK columns are notNull text, so
+// drizzle-zod produces `z.string()`, which silently accepts `""`. Without
+// these refinements, `bills.create` accepts an empty `vendorId` /
+// `approverId` and the insert fails at the FK boundary with a 500. Reject
+// at the input layer, surface a sensible Zod error, no DB round-trip.
 export const insertBillSchema = createInsertSchema(bills)
   .omit({
     id: true,
@@ -40,7 +46,19 @@ export const insertBillSchema = createInsertSchema(bills)
     updatedAt: true,
   })
   .extend({
+    vendorId: requiredText("vendorId"),
+    approverId: requiredText("approverId"),
+    invoiceNumber: requiredText("invoiceNumber"),
+    description: requiredText("description"),
     currency: usdLiteral,
+    // Drizzle's `numeric` column maps to a relaxed `z.string()` from
+    // drizzle-zod (Postgres returns numerics as strings, but no decimal
+    // format is enforced). Without this extension a payload like
+    // `totalAmount: 'abc'` slips through Zod and fails at the DB layer
+    // as a 500. Pinning the format here closes the gap on `bills.create`
+    // and on the draft-update path (drafts skip readiness, so the
+    // readyBillSchema regex doesn't catch it there either).
+    totalAmount: decimalAmount,
   });
 
 export const insertLineItemSchema = createInsertSchema(billLineItems)
@@ -51,7 +69,13 @@ export const insertLineItemSchema = createInsertSchema(billLineItems)
     updatedAt: true,
   })
   .extend({
-    description: requiredText("line_item_description"),
+    description: requiredText("description"),
+    // Same `numeric` → relaxed `z.string()` gap as `bills.totalAmount`:
+    // without this, `lineItems: [{ description: "x", amount: "sixty", ... }]`
+    // sails through Zod and fails at the Postgres numeric column → 500.
+    // Pin the decimal format at the input layer so client-side typos
+    // surface as BAD_REQUEST.
+    amount: decimalAmount,
   });
 
 // "Ready to submit" — the spec's `Draft (Ready)` predicate. Layered on top of
@@ -64,21 +88,20 @@ export const insertLineItemSchema = createInsertSchema(billLineItems)
 //  - the eventual UI "what's blocking submit?" display (via `missingPaths`)
 export const readyBillSchema = insertBillSchema
   .extend({
-    vendorId: requiredText("vendor"),
-    approverId: requiredText("approver"),
-    invoiceNumber: requiredText("invoice_number"),
-    description: requiredText("description"),
-    totalAmount: decimalAmount,
-    // currency: USD literal already enforced by insertBillSchema base.
+    // vendorId / approverId / invoiceNumber / description / currency /
+    // totalAmount are already constrained on the insertBillSchema base.
+    // What's added at the "ready" layer:
+    //   - ≥1 line item, each fully validated,
+    //   - line item amounts must reconcile with totalAmount (superRefine below).
+    //
+    // Description/amount per-item validation now lives on
+    // `insertLineItemSchema`, but we restate the shape here so the
+    // submit-time guard knows about line items as a unit and stays robust
+    // if a future refactor changes how lineItems are spliced in.
     lineItems: z
       .array(
         z.object({
-          // description / amount validation lives on
-          // `insertLineItemSchema`, but we restate the shape here so the
-          // submit-time guard knows about line items as a unit. Adding
-          // requiredText keeps the constraint intact even if a future
-          // refactor changes how lineItems are spliced in.
-          description: requiredText("line_item_description"),
+          description: requiredText("description"),
           amount: decimalAmount,
           position: z.number().int().nonnegative(),
         }),

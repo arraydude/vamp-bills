@@ -40,7 +40,10 @@ export const billMachine = setup({
     },
     awaiting_approval: {
       on: {
-        APPROVE: { target: "approved" },
+        // Readiness guard: a bill that's been patched to a not-ready shape
+        // while in awaiting_approval (or a row mutated outside the router)
+        // can't be approved until the missing fields are filled.
+        APPROVE: { target: "approved", guard: "isReady" },
         REJECT: { target: "rejected" },
         ARCHIVE: { target: "archived" },
       },
@@ -55,17 +58,20 @@ export const billMachine = setup({
     approved: {
       on: {
         MARK_PAID: { target: "paid" },
-        // Acknowledged self-action: bill stays in Approved; the router fires
-        // the actual `payments.status → cancelled` mutation on the side.
-        // Modeled as a transition with no `target` so XState reports it
-        // as "handled" (microstep fires) but value is unchanged.
-        CANCEL_PAYMENT: {},
         // Edit-restarts-approval rule from the spec.
         EDIT: { target: "awaiting_approval" },
         ARCHIVE: { target: "archived" },
       },
     },
-    paid: { type: "final" },
+    paid: {
+      on: {
+        // Cancel reverts a *paid* bill back to Awaiting payment (Approved)
+        // and voids the Payment row. Mirrors the Cancel vs. Archive note in
+        // docs/mvp-scope.md.
+        CANCEL_PAYMENT: { target: "approved" },
+        ARCHIVE: { target: "archived" },
+      },
+    },
     archived: { type: "final" },
   },
 });

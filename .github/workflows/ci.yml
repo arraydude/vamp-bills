@@ -51,6 +51,16 @@ jobs:
         # pnpm -r skips packages without the script silently — backend has
         # the bill domain unit tests; frontend / design-system don't define
         # tests yet (when they do, the same step runs them automatically).
+        #
+        # Dummy env vars satisfy env.ts's eager Zod validation at module
+        # load. Router unit tests pull in trpc/context.ts → auth.ts → env.ts
+        # transitively; the values are never actually used (db is mocked,
+        # auth isn't invoked) but the schema's .url() / .min(1) refusals
+        # would otherwise crash before any test runs.
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          BETTER_AUTH_SECRET: ci-test-secret-not-used
+          BETTER_AUTH_URL: http://localhost:3000
         run: pnpm test
 
       - name: Build

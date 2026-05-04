@@ -134,3 +134,22 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   file the symbol lives in), no double-source-of-truth, no name drift.
   Deletion test as the heuristic — if removing the barrel just moves
   the import statements unchanged, the barrel was earning nothing.
+- **tRPC error envelope.** Domain `missingPaths` (from
+  `domain/bill/schemas.ts`) flow to the FE via the `errorFormatter`
+  registered in [`packages/backend/src/trpc/trpc.ts`](./packages/backend/src/trpc/trpc.ts):
+  throw `TRPCError({ code: "BAD_REQUEST", cause: new GuardFailedError(paths) })`
+  and the FE reads them off `error.data.missingPaths`. Lifecycle
+  mutations return the hydrated bill shape directly (built inline via
+  the `hydrate()` helper in
+  [`routers/bills/helpers.ts`](./packages/backend/src/trpc/routers/bills/helpers.ts)),
+  **never via `createCaller`** — invoking `createCaller` inside a
+  procedure re-runs middleware and re-validates input
+  (`@trpc/server#server-side-calls` skill, HIGH-severity gotcha).
+- **tRPC Skills via `@tanstack/intent`.** The repo is intent-enabled
+  for `@trpc/server`, `@trpc/client`, `@trpc/tanstack-react-query`,
+  `@tanstack/router-core`, `@tanstack/router-plugin`, `dotenv`, and
+  `@tanstack/devtools-event-client`. Before designing in any of those
+  surfaces, run `npx @tanstack/intent@latest list` and load the
+  matching skill (`load <pkg>#<skill>`) so the implementing session
+  picks up the version-specific gotchas. PR descriptions should cite
+  the skills consulted.
