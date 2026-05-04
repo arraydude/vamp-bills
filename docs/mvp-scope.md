@@ -180,6 +180,17 @@ A Payment is auto-created when a Bill transitions to `Approved`.
 **Settings / user switcher** (for demo only)
 - A "View as" dropdown if you choose to seed multiple users (otherwise skip)
 
+### API surface (tRPC)
+
+All procedures behind `protectedProcedure` (BetterAuth session required).
+Three sub-routers mounted on `appRouter`:
+
+- **`vendors`** — `list`, `getById`, `create`, `update` (read-anyone, mutate-anyone in the demo).
+- **`bills`** — `list` (status + scope filters), `getById`, `create`, `update`, plus one mutation per `BillEvent` (`submit`, `approve`, `reject`, `markPaid`, `cancelPayment`, `archive`, `edit`). Lifecycle mutations call `attemptTransition` first; only the bill's `createdBy` may submit/edit/markPaid/cancelPayment/archive, and only its `approverId` may approve/reject. Wrong actor → `FORBIDDEN`; wrong state → `BAD_REQUEST`; readiness guard fails → `BAD_REQUEST` with `error.data.missingPaths` (lifted by the `errorFormatter` from a `GuardFailedError` cause).
+- **`payments`** — `listForBill` (read-only). Payment mutations happen as side effects of `bills.markPaid` / `bills.cancelPayment`.
+
+`getById` and every lifecycle mutation return the same hydrated bill shape: `{ bill, lineItems, payment, availableEvents, missingPaths }`. The FE never re-derives the action ribbon or the "what's blocking submit?" list — those flow off this single response.
+
 ### Demo plan
 
 A 3-minute happy-path walkthrough:
