@@ -70,6 +70,12 @@ export const insertLineItemSchema = createInsertSchema(billLineItems)
   })
   .extend({
     description: requiredText("description"),
+    // Same `numeric` → relaxed `z.string()` gap as `bills.totalAmount`:
+    // without this, `lineItems: [{ description: "x", amount: "sixty", ... }]`
+    // sails through Zod and fails at the Postgres numeric column → 500.
+    // Pin the decimal format at the input layer so client-side typos
+    // surface as BAD_REQUEST.
+    amount: decimalAmount,
   });
 
 // "Ready to submit" — the spec's `Draft (Ready)` predicate. Layered on top of
@@ -87,14 +93,14 @@ export const readyBillSchema = insertBillSchema
     // What's added at the "ready" layer:
     //   - ≥1 line item, each fully validated,
     //   - line item amounts must reconcile with totalAmount (superRefine below).
+    //
+    // Description/amount per-item validation now lives on
+    // `insertLineItemSchema`, but we restate the shape here so the
+    // submit-time guard knows about line items as a unit and stays robust
+    // if a future refactor changes how lineItems are spliced in.
     lineItems: z
       .array(
         z.object({
-          // description / amount validation lives on
-          // `insertLineItemSchema`, but we restate the shape here so the
-          // submit-time guard knows about line items as a unit. Adding
-          // requiredText keeps the constraint intact even if a future
-          // refactor changes how lineItems are spliced in.
           description: requiredText("description"),
           amount: decimalAmount,
           position: z.number().int().nonnegative(),

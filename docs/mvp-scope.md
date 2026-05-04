@@ -128,6 +128,7 @@ Single role. No permissions matrix in MVP.
 | `Draft (Ready)` | `Awaiting approval` | User submits |
 | `Awaiting approval` | `Approved` | Approver clicks Approve |
 | `Awaiting approval` | `Rejected` | Approver clicks Reject |
+| `Awaiting approval` | `Archived` | Creator clicks Archive (pull-the-plug on a pending-review bill; deliberate machine deviation from the spec ribbon — surface via overflow menu) |
 | `Rejected` | `Awaiting approval` | User clicks Edit & resubmit |
 | `Approved` (i.e. `Awaiting payment`) | `Awaiting approval` | User edits *any* field on the bill |
 | `Awaiting payment` | `Paid` | User clicks Mark as paid |
@@ -188,7 +189,7 @@ All bill / vendor / payment procedures are behind `protectedProcedure`
 on `publicProcedure` so uptime probes don't need a session cookie.
 Three sub-routers mounted on `appRouter`:
 
-- **`vendors`** — `list`, `getById`, `create`, `update` (read-anyone, mutate-anyone in the demo).
+- **`vendors`** — `list`, `getById`, `create`, `update` (any authenticated user can read or mutate; no per-tenant scoping in the demo).
 - **`bills`** — `list` (status + scope filters), `getById`, `create`, `update`, plus one mutation per `BillEvent` (`submit`, `approve`, `reject`, `markPaid`, `cancelPayment`, `archive`, `edit`). Lifecycle mutations call `attemptTransition` first; only the bill's `createdBy` may submit/edit/markPaid/cancelPayment/archive, and only its `approverId` may approve/reject. Wrong actor → `FORBIDDEN`; wrong state → `BAD_REQUEST`; readiness guard fails → `BAD_REQUEST` with `error.data.missingPaths` (lifted by the `errorFormatter` from a `GuardFailedError` cause).
 - **`payments`** — `listForBill` (read-only). Payment mutations happen as side effects of `bills.markPaid` / `bills.cancelPayment`.
 

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { BillEvent, BillEventType } from "./events.ts";
-import { isReady, missingPaths, readyBillSchema } from "./schemas.ts";
+import {
+  insertBillSchema,
+  insertLineItemSchema,
+  isReady,
+  missingPaths,
+  readyBillSchema,
+} from "./schemas.ts";
 import { BILL_STATUSES } from "./status.ts";
 import {
   attemptTransition,
@@ -371,5 +377,51 @@ describe("readyBillSchema — single-source validation via drizzle-zod + refinem
       ],
     };
     expect(isReady(bill)).toBe(false);
+  });
+});
+
+describe("insert schemas — decimal-format guard at the *insert* layer", () => {
+  // Round 3 / Copilot finding: drizzle-zod produces a relaxed `z.string()`
+  // for `numeric` columns, so non-decimal payloads sail through Zod and
+  // fail at Postgres as a 500. The insert-layer extensions on
+  // `insertBillSchema.totalAmount` and `insertLineItemSchema.amount` close
+  // the gap on `bills.create` and on the draft path of `bills.update`
+  // (drafts skip the readiness guard, so readyBillSchema can't catch them).
+
+  it("insertBillSchema rejects non-decimal totalAmount", () => {
+    const result = insertBillSchema.safeParse({
+      vendorId: "v1",
+      approverId: "u1",
+      invoiceNumber: "INV-1",
+      totalAmount: "abc",
+      currency: "USD",
+      invoiceDate: "2026-01-01",
+      description: "test",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "totalAmount")).toBe(true);
+    }
+  });
+
+  it("insertLineItemSchema rejects non-decimal amount", () => {
+    const result = insertLineItemSchema.safeParse({
+      description: "x",
+      amount: "sixty",
+      position: 0,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "amount")).toBe(true);
+    }
+  });
+
+  it("insertLineItemSchema accepts a well-formed decimal amount", () => {
+    const result = insertLineItemSchema.safeParse({
+      description: "x",
+      amount: "60.00",
+      position: 0,
+    });
+    expect(result.success).toBe(true);
   });
 });

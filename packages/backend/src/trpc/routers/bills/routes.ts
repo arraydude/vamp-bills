@@ -32,7 +32,9 @@ export const billsRouter = router({
   archive: protectedProcedure
     .input(controller.billIdInputShape)
     .mutation(controller.lifecycle("ARCHIVE", "creator")),
-  edit: protectedProcedure
-    .input(controller.billIdInputShape)
-    .mutation(controller.lifecycle("EDIT", "creator")),
+  // No standalone `edit` mutation: a payload-less EDIT lets clients bounce
+  // an approved/rejected bill back to `awaiting_approval` with no actual
+  // change, defeating the `hasActualChange` guard in `update()`. The EDIT
+  // transition still fires automatically inside `update()` when fields or
+  // line items differ on an approved/rejected bill.
 });

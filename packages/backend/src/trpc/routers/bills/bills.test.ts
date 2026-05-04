@@ -113,7 +113,6 @@ describe("bills router — auth gate (UNAUTHORIZED)", () => {
     ["markPaid", () => createCaller(noUserCtx()).markPaid({ id: "b_1" })],
     ["cancelPayment", () => createCaller(noUserCtx()).cancelPayment({ id: "b_1" })],
     ["archive", () => createCaller(noUserCtx()).archive({ id: "b_1" })],
-    ["edit", () => createCaller(noUserCtx()).edit({ id: "b_1" })],
   ])("%s rejects when ctx.user is null", async (_name, run) => {
     await expect(run()).rejects.toMatchObject({
       code: "UNAUTHORIZED",
