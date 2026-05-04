@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { BillEvent, BillEventType } from "./events.ts";
-import { isReady, missingPaths, readyBillSchema } from "./schemas.ts";
+import {
+  insertBillSchema,
+  insertLineItemSchema,
+  isReady,
+  missingPaths,
+  readyBillSchema,
+} from "./schemas.ts";
 import { BILL_STATUSES } from "./status.ts";
 import {
   attemptTransition,
@@ -35,6 +41,13 @@ describe("billMachine — legal transitions (per mvp-scope.md lifecycle table)",
       "awaiting_approval",
     ],
     ["Approved → Archived on ARCHIVE", "approved", "ARCHIVE", "archived"],
+    [
+      "Paid → Approved on CANCEL_PAYMENT (cancel reverts a paid bill)",
+      "paid",
+      "CANCEL_PAYMENT",
+      "approved",
+    ],
+    ["Paid → Archived on ARCHIVE", "paid", "ARCHIVE", "archived"],
   ])("%s", (_label, from, eventType, expected) => {
     const result = attemptTransition(from, { type: eventType } as BillEvent, READY);
     expect(result).toEqual({ ok: true, nextStatus: expected });
@@ -56,18 +69,19 @@ describe("billMachine — illegal transitions are rejected", () => {
     ["SUBMIT from approved", "approved", "SUBMIT"],
     ["APPROVE from approved", "approved", "APPROVE"],
     ["REJECT from approved", "approved", "REJECT"],
+    // CANCEL_PAYMENT moved to paid-only (no payment exists in approved any more)
+    ["CANCEL_PAYMENT from approved", "approved", "CANCEL_PAYMENT"],
     // Rejected can't approve/reject/submit/mark paid
     ["SUBMIT from rejected", "rejected", "SUBMIT"],
     ["APPROVE from rejected", "rejected", "APPROVE"],
     ["REJECT from rejected", "rejected", "REJECT"],
     ["MARK_PAID from rejected", "rejected", "MARK_PAID"],
-    // Paid is terminal
+    // Paid only allows CANCEL_PAYMENT and ARCHIVE — not terminal anymore
     ["SUBMIT from paid", "paid", "SUBMIT"],
     ["APPROVE from paid", "paid", "APPROVE"],
     ["REJECT from paid", "paid", "REJECT"],
     ["MARK_PAID from paid", "paid", "MARK_PAID"],
     ["EDIT from paid", "paid", "EDIT"],
-    ["ARCHIVE from paid", "paid", "ARCHIVE"],
     // Archived is terminal
     ["SUBMIT from archived", "archived", "SUBMIT"],
     ["APPROVE from archived", "archived", "APPROVE"],
@@ -81,32 +95,47 @@ describe("billMachine — illegal transitions are rejected", () => {
   });
 });
 
-describe("billMachine — isReady guard on SUBMIT", () => {
+describe("billMachine — isReady guard on SUBMIT and APPROVE", () => {
   it("rejects SUBMIT when not ready (missing fields) — kind: guard_failed", () => {
     const result = attemptTransition("draft", { type: "SUBMIT" }, NOT_READY);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.kind).toBe("guard_failed");
   });
 
-  // (Previously this test split "fields present" vs "totals don't reconcile"
-  // as separate boolean flags; the machine now consults a single
-  // `isReady` boolean per `BillMachineContext`. The schema-side
-  // `missingPaths()` test below asserts the per-blocker breakdown.)
-
   it("accepts SUBMIT when both flags true", () => {
     const result = attemptTransition("draft", { type: "SUBMIT" }, READY);
     expect(result).toEqual({ ok: true, nextStatus: "awaiting_approval" });
   });
+
+  // APPROVE gained the same isReady guard so a row that was patched into a
+  // not-ready awaiting_approval state (or mutated outside the router) can't
+  // progress until the missing fields are filled.
+  it("rejects APPROVE when bill is not ready — kind: guard_failed", () => {
+    const result = attemptTransition("awaiting_approval", { type: "APPROVE" }, NOT_READY);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.kind).toBe("guard_failed");
+  });
+
+  it("accepts APPROVE when ready", () => {
+    const result = attemptTransition("awaiting_approval", { type: "APPROVE" }, READY);
+    expect(result).toEqual({ ok: true, nextStatus: "approved" });
+  });
 });
 
-describe("billMachine — CANCEL_PAYMENT acknowledged self-action", () => {
-  it("CANCEL_PAYMENT from approved → ok, bill stays in approved (payment-side cancel happens via router)", () => {
-    const result = attemptTransition("approved", { type: "CANCEL_PAYMENT" }, READY);
+describe("billMachine — CANCEL_PAYMENT (paid-only)", () => {
+  it("CANCEL_PAYMENT from paid → approved (cancel reverts a paid bill)", () => {
+    const result = attemptTransition("paid", { type: "CANCEL_PAYMENT" }, READY);
     expect(result).toEqual({ ok: true, nextStatus: "approved" });
   });
 
-  it("CANCEL_PAYMENT from any non-approved state → wrong_state", () => {
-    for (const from of ["draft", "awaiting_approval", "rejected", "paid", "archived"] as const) {
+  it("CANCEL_PAYMENT from any non-paid state → wrong_state", () => {
+    for (const from of [
+      "draft",
+      "awaiting_approval",
+      "approved",
+      "rejected",
+      "archived",
+    ] as const) {
       const result = attemptTransition(from, { type: "CANCEL_PAYMENT" }, READY);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.kind).toBe("wrong_state");
@@ -134,38 +163,78 @@ describe("billMachine — failure kinds discriminate wrong_state from guard_fail
   });
 });
 
-describe("availableEvents — what the UI button row should show", () => {
-  it("draft (ready): SUBMIT + ARCHIVE", () => {
-    expect(availableEvents("draft", READY)).toEqual(["SUBMIT", "ARCHIVE"]);
+describe("availableEvents — what the UI button row should show (role-filtered)", () => {
+  const CREATOR = new Set(["creator"] as const);
+  const APPROVER = new Set(["approver"] as const);
+  const SELF_APPROVED = new Set(["creator", "approver"] as const);
+  const NEITHER = new Set<"creator" | "approver">();
+
+  it("draft (ready) as creator: SUBMIT + ARCHIVE", () => {
+    expect(availableEvents("draft", READY, CREATOR)).toEqual(["SUBMIT", "ARCHIVE"]);
   });
 
-  it("draft (not ready): only ARCHIVE — SUBMIT hidden by guard", () => {
-    expect(availableEvents("draft", NOT_READY)).toEqual(["ARCHIVE"]);
+  it("draft (not ready) as creator: only ARCHIVE — SUBMIT hidden by guard", () => {
+    expect(availableEvents("draft", NOT_READY, CREATOR)).toEqual(["ARCHIVE"]);
   });
 
-  it("awaiting_approval: APPROVE + REJECT + ARCHIVE", () => {
-    expect(availableEvents("awaiting_approval", READY)).toEqual(["APPROVE", "REJECT", "ARCHIVE"]);
+  it("draft as approver: nothing — drafts are creator-only", () => {
+    expect(availableEvents("draft", READY, APPROVER)).toEqual([]);
   });
 
-  it("approved (Awaiting payment): MARK_PAID + CANCEL_PAYMENT + ARCHIVE + EDIT", () => {
-    expect(availableEvents("approved", READY)).toEqual([
-      "MARK_PAID",
-      "CANCEL_PAYMENT",
+  it("awaiting_approval as approver: APPROVE + REJECT", () => {
+    expect(availableEvents("awaiting_approval", READY, APPROVER)).toEqual(["APPROVE", "REJECT"]);
+  });
+
+  it("awaiting_approval (not ready) as approver: only REJECT — APPROVE blocked by guard", () => {
+    expect(availableEvents("awaiting_approval", NOT_READY, APPROVER)).toEqual(["REJECT"]);
+  });
+
+  it("awaiting_approval as creator: only ARCHIVE", () => {
+    expect(availableEvents("awaiting_approval", READY, CREATOR)).toEqual(["ARCHIVE"]);
+  });
+
+  // Self-approved is the spec's documented compromise (mvp-scope.md "Honest
+  // single-user demo"): one user holds both roles. The action ribbon must
+  // show the union of creator + approver actions, not collapse to one.
+  it("awaiting_approval as self-approved (creator + approver): APPROVE + REJECT + ARCHIVE", () => {
+    expect(availableEvents("awaiting_approval", READY, SELF_APPROVED)).toEqual([
+      "APPROVE",
+      "REJECT",
       "ARCHIVE",
-      "EDIT",
     ]);
   });
 
-  it("rejected: EDIT + ARCHIVE (spec ribbon: 'Edit & resubmit' before 'Archive')", () => {
-    expect(availableEvents("rejected", READY)).toEqual(["EDIT", "ARCHIVE"]);
+  it("approved as creator: MARK_PAID + ARCHIVE + EDIT (no CANCEL_PAYMENT until paid)", () => {
+    expect(availableEvents("approved", READY, CREATOR)).toEqual(["MARK_PAID", "ARCHIVE", "EDIT"]);
   });
 
-  it("paid: nothing — terminal", () => {
-    expect(availableEvents("paid", READY)).toEqual([]);
+  it("approved as approver: nothing — approver's job is done", () => {
+    expect(availableEvents("approved", READY, APPROVER)).toEqual([]);
+  });
+
+  it("rejected as creator: EDIT + ARCHIVE (spec ribbon: 'Edit & resubmit' before 'Archive')", () => {
+    expect(availableEvents("rejected", READY, CREATOR)).toEqual(["EDIT", "ARCHIVE"]);
+  });
+
+  it("paid as creator: CANCEL_PAYMENT + ARCHIVE", () => {
+    expect(availableEvents("paid", READY, CREATOR)).toEqual(["CANCEL_PAYMENT", "ARCHIVE"]);
   });
 
   it("archived: nothing — terminal", () => {
-    expect(availableEvents("archived", READY)).toEqual([]);
+    expect(availableEvents("archived", READY, CREATOR)).toEqual([]);
+  });
+
+  it("any state with neither role: nothing", () => {
+    for (const state of [
+      "draft",
+      "awaiting_approval",
+      "approved",
+      "rejected",
+      "paid",
+      "archived",
+    ] as const) {
+      expect(availableEvents(state, READY, NEITHER)).toEqual([]);
+    }
   });
 });
 
@@ -308,5 +377,51 @@ describe("readyBillSchema — single-source validation via drizzle-zod + refinem
       ],
     };
     expect(isReady(bill)).toBe(false);
+  });
+});
+
+describe("insert schemas — decimal-format guard at the *insert* layer", () => {
+  // Round 3 / Copilot finding: drizzle-zod produces a relaxed `z.string()`
+  // for `numeric` columns, so non-decimal payloads sail through Zod and
+  // fail at Postgres as a 500. The insert-layer extensions on
+  // `insertBillSchema.totalAmount` and `insertLineItemSchema.amount` close
+  // the gap on `bills.create` and on the draft path of `bills.update`
+  // (drafts skip the readiness guard, so readyBillSchema can't catch them).
+
+  it("insertBillSchema rejects non-decimal totalAmount", () => {
+    const result = insertBillSchema.safeParse({
+      vendorId: "v1",
+      approverId: "u1",
+      invoiceNumber: "INV-1",
+      totalAmount: "abc",
+      currency: "USD",
+      invoiceDate: "2026-01-01",
+      description: "test",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "totalAmount")).toBe(true);
+    }
+  });
+
+  it("insertLineItemSchema rejects non-decimal amount", () => {
+    const result = insertLineItemSchema.safeParse({
+      description: "x",
+      amount: "sixty",
+      position: 0,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path[0] === "amount")).toBe(true);
+    }
+  });
+
+  it("insertLineItemSchema accepts a well-formed decimal amount", () => {
+    const result = insertLineItemSchema.safeParse({
+      description: "x",
+      amount: "60.00",
+      position: 0,
+    });
+    expect(result.success).toBe(true);
   });
 });
