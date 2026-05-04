@@ -1,9 +1,8 @@
-import { createRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { createRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { LoginForm } from "@workspace/ui/components/login-form";
-import { useEffect, useState } from "react";
 import { z } from "zod";
 
-import { authClient } from "@/lib/auth-client.ts";
+import { useAuth } from "@/lib/use-auth.ts";
 import { rootRoute } from "@/routes/root.tsx";
 
 function sanitizeRedirect(value: string | undefined): string {
@@ -31,44 +30,12 @@ export const loginRoute = createRoute({
 function LoginPage() {
   const { redirect: redirectParam } = loginRoute.useSearch();
   const navigate = useNavigate();
-  const router = useRouter();
-  const { data: session } = authClient.useSession();
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, setIsPending] = useState(false);
-  const [authSuccess, setAuthSuccess] = useState(false);
-
+  const { signIn, signInWithGoogle, isTransitioning, error } = useAuth();
   const target = sanitizeRedirect(redirectParam);
 
-  useEffect(() => {
-    if (authSuccess && session) {
-      router.invalidate().then(() => {
-        navigate({ to: target });
-      });
-    }
-  }, [authSuccess, session, router, navigate, target]);
-
   const handleSubmit = async (data: { email: string; password: string }) => {
-    setError(null);
-    setIsPending(true);
-    try {
-      const { error: signInError } = await authClient.signIn.email({
-        email: data.email,
-        password: data.password,
-      });
-      if (signInError) {
-        setError(signInError.message ?? "Sign in failed");
-        setIsPending(false);
-        return;
-      }
-      setAuthSuccess(true);
-    } catch {
-      setError("An unexpected error occurred");
-      setIsPending(false);
-    }
-  };
-
-  const handleGoogleSignIn = () => {
-    authClient.signIn.social({ provider: "google", callbackURL: target });
+    const { ok } = await signIn(data);
+    if (ok) navigate({ to: target });
   };
 
   return (
@@ -76,8 +43,8 @@ function LoginPage() {
       <div className="flex w-full max-w-sm flex-col gap-6">
         <LoginForm
           onSubmit={handleSubmit}
-          onGoogleSignIn={handleGoogleSignIn}
-          isPending={isPending}
+          onGoogleSignIn={() => signInWithGoogle({ callbackURL: target })}
+          isPending={isTransitioning}
           error={error}
         />
       </div>
