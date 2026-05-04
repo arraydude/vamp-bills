@@ -54,6 +54,7 @@ function LoginPage() {
         });
         if (signUpError) {
           setError(signUpError.message ?? "Sign up failed");
+          setIsPending(false);
           return;
         }
       } else {
@@ -63,14 +64,13 @@ function LoginPage() {
         });
         if (signInError) {
           setError(signInError.message ?? "Sign in failed");
+          setIsPending(false);
           return;
         }
       }
       window.location.href = target;
-      return;
     } catch {
       setError("An unexpected error occurred");
-    } finally {
       setIsPending(false);
     }
   };

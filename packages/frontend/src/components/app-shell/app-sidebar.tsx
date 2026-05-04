@@ -1,6 +1,5 @@
 import { IconFileInvoice, IconLogout, IconReceipt } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
-
 import { Button } from "@workspace/ui/components/button";
 import {
   Sidebar,
@@ -12,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar";
+import { useState } from "react";
 
 import { authClient } from "@/lib/auth-client.ts";
 
@@ -33,10 +33,13 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [signingOut, setSigningOut] = useState(false);
 
-  const handleSignOut = async () => {
-    await authClient.signOut();
-    window.location.href = "/login";
+  const handleSignOut = () => {
+    setSigningOut(true);
+    authClient.signOut().finally(() => {
+      window.location.href = "/login";
+    });
   };
 
   return (
@@ -75,9 +78,9 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <Button variant="ghost" size="sm" onClick={handleSignOut}>
+        <Button variant="ghost" size="sm" onClick={handleSignOut} disabled={signingOut}>
           <IconLogout />
-          Sign out
+          {signingOut ? "Signing out..." : "Sign out"}
         </Button>
       </SidebarFooter>
     </Sidebar>
