@@ -5,7 +5,7 @@ import { db } from "@vamp-bills/backend/db/client.ts";
 import { missingPaths } from "@vamp-bills/backend/domain/bill/schemas.ts";
 import type { BillStatus } from "@vamp-bills/backend/domain/bill/status.ts";
 import {
-  type ActorRole,
+  type ActorRoles,
   attemptTransition,
   availableEvents,
   derivedReadiness,
@@ -63,13 +63,20 @@ export function assertApprover(bill: BillRow, userId: string): void {
   }
 }
 
-// Derive the caller's role on a given bill. Mirrors the predicates in
+// Derive the caller's role(s) on a given bill. Mirrors the predicates in
 // `assertCreator` / `assertApprover` so the action ribbon is filtered by the
 // same rules the lifecycle mutations enforce.
-export function actorRole(bill: BillRow, userId: string): ActorRole {
-  if (bill.createdBy === userId) return "creator";
-  if (bill.approverId === userId) return "approver";
-  return "other";
+//
+// Returns a Set so a self-approved bill (`createdBy === approverId`) holds
+// both roles — the action ribbon shows the union of creator + approver
+// actions, preserving the spec's "Self-approved" demo flow. An empty set
+// means the caller is neither (a third-party reader); they get an empty
+// available-events list.
+export function actorRoles(bill: BillRow, userId: string): ActorRoles {
+  const roles = new Set<"creator" | "approver">();
+  if (bill.createdBy === userId) roles.add("creator");
+  if (bill.approverId === userId) roles.add("approver");
+  return roles;
 }
 
 export function hydrate(
@@ -84,7 +91,7 @@ export function hydrate(
     bill,
     lineItems: ordered,
     payment,
-    availableEvents: availableEvents(bill.status, derived, actorRole(bill, userId)),
+    availableEvents: availableEvents(bill.status, derived, actorRoles(bill, userId)),
     missingPaths: missingPaths({ ...bill, lineItems: ordered }),
   };
 }
@@ -136,10 +143,11 @@ export async function loadBundle(billId: string): Promise<Bundle> {
   return { bill, lineItems, payment: payment ?? null };
 }
 
-// Maps attemptTransition's failure variants onto TRPCError. Unguarded
-// transitions that legitimately leave the value unchanged (CANCEL_PAYMENT
-// in approved) come back as `ok: true, nextStatus: current` — the caller
-// handles that case naturally without going through this helper.
+// Maps attemptTransition's failure variants onto TRPCError. After the
+// paid-only CANCEL_PAYMENT rework no event in the machine is a self-action,
+// so `ok: true` always implies a real status change. The caller is still
+// expected to handle nextStatus === current defensively (the lifecycle
+// factory does, by skipping both the bills UPDATE and any side effect).
 //
 // `lineItems` is widened to "the minimum readiness shape" so the update
 // mutation can pass a mix of fresh inputs (no id/billId/timestamps) and

@@ -50,7 +50,14 @@ const ACTION_ORDER: Record<BillStatus, readonly BillEventType[]> = {
 // Per-event actor authorization, mirroring `assertCreator` / `assertApprover`
 // in `routers/bills/helpers.ts`. Single source of truth so the action ribbon
 // only renders buttons the current user can actually invoke.
-type ActorRole = "creator" | "approver" | "other";
+//
+// Self-approve note: a bill where `createdBy === approverId === userId` (the
+// "Self-approved" demo flow) holds *both* roles. `availableEvents` takes a
+// Set of roles so the action ribbon shows the union of creator + approver
+// actions for that user — the original single-role enum collapsed
+// self-approved bills to creator-only and hid APPROVE/REJECT.
+type ActorRole = "creator" | "approver";
+type ActorRoles = ReadonlySet<ActorRole>;
 
 const EVENT_ALLOWED_BY_ROLE: Record<BillEventType, ReadonlySet<ActorRole>> = {
   SUBMIT: new Set(["creator"]),
@@ -114,14 +121,22 @@ export function attemptTransition(
 // `APPROVE` / `REJECT`, non-creators won't see `MARK_PAID` / `ARCHIVE` /
 // `CANCEL_PAYMENT` / `EDIT`. Order matches the spec's action-ribbon per
 // state (see `ACTION_ORDER` above for the mapping rationale).
-export type { ActorRole };
+export type { ActorRole, ActorRoles };
 export function availableEvents(
   current: BillStatus,
   derived: TransitionDerived,
-  role: ActorRole,
+  roles: ActorRoles,
 ): BillEventType[] {
   return ACTION_ORDER[current].filter((type) => {
-    if (!EVENT_ALLOWED_BY_ROLE[type].has(role)) return false;
+    const allowed = EVENT_ALLOWED_BY_ROLE[type];
+    let canAct = false;
+    for (const role of roles) {
+      if (allowed.has(role)) {
+        canAct = true;
+        break;
+      }
+    }
+    if (!canAct) return false;
     const result = attemptTransition(current, { type } as BillEvent, derived);
     return result.ok;
   });

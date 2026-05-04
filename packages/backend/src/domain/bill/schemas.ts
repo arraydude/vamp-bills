@@ -51,6 +51,14 @@ export const insertBillSchema = createInsertSchema(bills)
     invoiceNumber: requiredText("invoiceNumber"),
     description: requiredText("description"),
     currency: usdLiteral,
+    // Drizzle's `numeric` column maps to a relaxed `z.string()` from
+    // drizzle-zod (Postgres returns numerics as strings, but no decimal
+    // format is enforced). Without this extension a payload like
+    // `totalAmount: 'abc'` slips through Zod and fails at the DB layer
+    // as a 500. Pinning the format here closes the gap on `bills.create`
+    // and on the draft-update path (drafts skip readiness, so the
+    // readyBillSchema regex doesn't catch it there either).
+    totalAmount: decimalAmount,
   });
 
 export const insertLineItemSchema = createInsertSchema(billLineItems)
@@ -74,13 +82,11 @@ export const insertLineItemSchema = createInsertSchema(billLineItems)
 //  - the eventual UI "what's blocking submit?" display (via `missingPaths`)
 export const readyBillSchema = insertBillSchema
   .extend({
-    // vendorId / approverId / invoiceNumber / description / currency are
-    // already required-text or usd-literal on the insertBillSchema base.
+    // vendorId / approverId / invoiceNumber / description / currency /
+    // totalAmount are already constrained on the insertBillSchema base.
     // What's added at the "ready" layer:
-    //   - totalAmount must match the decimal regex (insert allows any string),
     //   - ≥1 line item, each fully validated,
     //   - line item amounts must reconcile with totalAmount (superRefine below).
-    totalAmount: decimalAmount,
     lineItems: z
       .array(
         z.object({

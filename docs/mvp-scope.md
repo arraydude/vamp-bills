@@ -183,7 +183,9 @@ A Payment is created when the user clicks Mark as paid on an approved bill. The 
 
 ### API surface (tRPC)
 
-All procedures behind `protectedProcedure` (BetterAuth session required).
+All bill / vendor / payment procedures are behind `protectedProcedure`
+(BetterAuth session required). The one exception is `health`, which stays
+on `publicProcedure` so uptime probes don't need a session cookie.
 Three sub-routers mounted on `appRouter`:
 
 - **`vendors`** — `list`, `getById`, `create`, `update` (read-anyone, mutate-anyone in the demo).

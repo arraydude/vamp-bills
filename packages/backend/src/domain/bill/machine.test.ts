@@ -158,51 +158,67 @@ describe("billMachine — failure kinds discriminate wrong_state from guard_fail
 });
 
 describe("availableEvents — what the UI button row should show (role-filtered)", () => {
+  const CREATOR = new Set(["creator"] as const);
+  const APPROVER = new Set(["approver"] as const);
+  const SELF_APPROVED = new Set(["creator", "approver"] as const);
+  const NEITHER = new Set<"creator" | "approver">();
+
   it("draft (ready) as creator: SUBMIT + ARCHIVE", () => {
-    expect(availableEvents("draft", READY, "creator")).toEqual(["SUBMIT", "ARCHIVE"]);
+    expect(availableEvents("draft", READY, CREATOR)).toEqual(["SUBMIT", "ARCHIVE"]);
   });
 
   it("draft (not ready) as creator: only ARCHIVE — SUBMIT hidden by guard", () => {
-    expect(availableEvents("draft", NOT_READY, "creator")).toEqual(["ARCHIVE"]);
+    expect(availableEvents("draft", NOT_READY, CREATOR)).toEqual(["ARCHIVE"]);
   });
 
   it("draft as approver: nothing — drafts are creator-only", () => {
-    expect(availableEvents("draft", READY, "approver")).toEqual([]);
+    expect(availableEvents("draft", READY, APPROVER)).toEqual([]);
   });
 
   it("awaiting_approval as approver: APPROVE + REJECT", () => {
-    expect(availableEvents("awaiting_approval", READY, "approver")).toEqual(["APPROVE", "REJECT"]);
+    expect(availableEvents("awaiting_approval", READY, APPROVER)).toEqual(["APPROVE", "REJECT"]);
   });
 
   it("awaiting_approval (not ready) as approver: only REJECT — APPROVE blocked by guard", () => {
-    expect(availableEvents("awaiting_approval", NOT_READY, "approver")).toEqual(["REJECT"]);
+    expect(availableEvents("awaiting_approval", NOT_READY, APPROVER)).toEqual(["REJECT"]);
   });
 
   it("awaiting_approval as creator: only ARCHIVE", () => {
-    expect(availableEvents("awaiting_approval", READY, "creator")).toEqual(["ARCHIVE"]);
+    expect(availableEvents("awaiting_approval", READY, CREATOR)).toEqual(["ARCHIVE"]);
+  });
+
+  // Self-approved is the spec's documented compromise (mvp-scope.md "Honest
+  // single-user demo"): one user holds both roles. The action ribbon must
+  // show the union of creator + approver actions, not collapse to one.
+  it("awaiting_approval as self-approved (creator + approver): APPROVE + REJECT + ARCHIVE", () => {
+    expect(availableEvents("awaiting_approval", READY, SELF_APPROVED)).toEqual([
+      "APPROVE",
+      "REJECT",
+      "ARCHIVE",
+    ]);
   });
 
   it("approved as creator: MARK_PAID + ARCHIVE + EDIT (no CANCEL_PAYMENT until paid)", () => {
-    expect(availableEvents("approved", READY, "creator")).toEqual(["MARK_PAID", "ARCHIVE", "EDIT"]);
+    expect(availableEvents("approved", READY, CREATOR)).toEqual(["MARK_PAID", "ARCHIVE", "EDIT"]);
   });
 
   it("approved as approver: nothing — approver's job is done", () => {
-    expect(availableEvents("approved", READY, "approver")).toEqual([]);
+    expect(availableEvents("approved", READY, APPROVER)).toEqual([]);
   });
 
   it("rejected as creator: EDIT + ARCHIVE (spec ribbon: 'Edit & resubmit' before 'Archive')", () => {
-    expect(availableEvents("rejected", READY, "creator")).toEqual(["EDIT", "ARCHIVE"]);
+    expect(availableEvents("rejected", READY, CREATOR)).toEqual(["EDIT", "ARCHIVE"]);
   });
 
   it("paid as creator: CANCEL_PAYMENT + ARCHIVE", () => {
-    expect(availableEvents("paid", READY, "creator")).toEqual(["CANCEL_PAYMENT", "ARCHIVE"]);
+    expect(availableEvents("paid", READY, CREATOR)).toEqual(["CANCEL_PAYMENT", "ARCHIVE"]);
   });
 
   it("archived: nothing — terminal", () => {
-    expect(availableEvents("archived", READY, "creator")).toEqual([]);
+    expect(availableEvents("archived", READY, CREATOR)).toEqual([]);
   });
 
-  it("any state as 'other' (neither creator nor approver): nothing", () => {
+  it("any state with neither role: nothing", () => {
     for (const state of [
       "draft",
       "awaiting_approval",
@@ -211,7 +227,7 @@ describe("availableEvents — what the UI button row should show (role-filtered)
       "paid",
       "archived",
     ] as const) {
-      expect(availableEvents(state, READY, "other")).toEqual([]);
+      expect(availableEvents(state, READY, NEITHER)).toEqual([]);
     }
   });
 });

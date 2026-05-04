@@ -179,6 +179,16 @@ export async function update({
   const mergedItems = nextItems ?? bundle.lineItems;
   const mergedBill: BillRow = { ...bundle.bill, ...patch };
 
+  // Short-circuit no-change saves: a full-form save where every field equals
+  // its current value (common UX pattern — user opens edit form, clicks Save
+  // without touching anything) must NOT fire EDIT and bump an approved /
+  // rejected bill back to awaiting_approval. The Zod superRefine catches
+  // id-only payloads at the input layer; this catches the deeper case where
+  // every field is present but unchanged.
+  if (!hasActualChange(bundle, patch, nextItems)) {
+    return hydrate(bundle.bill, bundle.lineItems, bundle.payment, ctx.user.id);
+  }
+
   // Defense-in-depth readiness check on the merged shape: drafts may legally
   // be incomplete (the user is still filling them in), but anything beyond
   // draft must remain ready after the patch — otherwise the next APPROVE
@@ -209,14 +219,21 @@ export async function update({
   }
 
   const updated = await db.transaction(async (tx) => {
-    // Optimistic lock via status equality. Without it, the auth/state checks
-    // happen on a bundle loaded outside the transaction, but the write only
-    // matches on `id`, which lets a concurrent archive/submit/approve be
-    // overwritten by this stale-snapshot patch.
+    // Optimistic lock via (status, updatedAt). Status alone catches
+    // cross-status races (concurrent archive vs approve), but two same-status
+    // edits (e.g. two draft saves from different tabs) both pass the status
+    // predicate. Pinning updatedAt — which `$onUpdate` advances on every
+    // write — converts that race into a CONFLICT too.
     const [billRow] = await tx
       .update(bills)
       .set({ ...patch, status: nextStatus })
-      .where(and(eq(bills.id, id), eq(bills.status, bundle.bill.status)))
+      .where(
+        and(
+          eq(bills.id, id),
+          eq(bills.status, bundle.bill.status),
+          eq(bills.updatedAt, bundle.bill.updatedAt),
+        ),
+      )
       .returning();
     if (!billRow) {
       throw new TRPCError({
@@ -236,6 +253,34 @@ export async function update({
   });
 
   return hydrate(updated.bill, updated.lineItems, bundle.payment, ctx.user.id);
+}
+
+// True iff the patch or nextItems actually differ from the loaded bundle.
+// Field-level equality only compares keys present in the patch (an omitted
+// key means "no change"). Line items compare description/amount/position
+// pairwise — the only fields the user can edit. Order matters because
+// `position` is a user-controlled column.
+function hasActualChange(
+  bundle: Bundle,
+  patch: Partial<BillRow>,
+  nextItems: UpdateInput["lineItems"],
+): boolean {
+  const fieldsChanged = Object.entries(patch).some(([k, v]) => {
+    if (v === undefined) return false;
+    return v !== (bundle.bill as Record<string, unknown>)[k];
+  });
+  if (fieldsChanged) return true;
+  if (nextItems === undefined) return false;
+  if (nextItems.length !== bundle.lineItems.length) return true;
+  return nextItems.some((next, i) => {
+    const cur = bundle.lineItems[i];
+    if (!cur) return true;
+    return (
+      cur.description !== next.description ||
+      cur.amount !== next.amount ||
+      cur.position !== next.position
+    );
+  });
 }
 
 // ─── lifecycle factory ─────────────────────────────────────────────────────
@@ -304,15 +349,23 @@ export function lifecycle(
       let updatedBill: BillRow = bundle.bill;
       let payment = bundle.payment;
       if (nextStatus !== bundle.bill.status) {
-        // Optimistic lock: a concurrent lifecycle call (or update) can race
-        // between loadBundle() and this UPDATE. Filtering on the loaded
-        // status converts the race into a CONFLICT instead of letting
-        // either side overwrite the other's work (e.g. concurrent markPaid
-        // calls each inserting a payment row).
+        // Optimistic lock on (status, updatedAt). Status alone catches
+        // cross-status races (concurrent archive vs approve); updatedAt
+        // catches same-status races (two concurrent markPaid calls each
+        // trying to insert a payment row). The `$onUpdate` on the column
+        // advances on every write, so any concurrent edit that sneaks in
+        // between loadBundle() and this UPDATE bumps the timestamp and
+        // makes our predicate fail.
         const [row] = await tx
           .update(bills)
           .set({ status: nextStatus })
-          .where(and(eq(bills.id, input.id), eq(bills.status, bundle.bill.status)))
+          .where(
+            and(
+              eq(bills.id, input.id),
+              eq(bills.status, bundle.bill.status),
+              eq(bills.updatedAt, bundle.bill.updatedAt),
+            ),
+          )
           .returning();
         if (!row) {
           throw new TRPCError({
