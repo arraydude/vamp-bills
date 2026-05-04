@@ -10,7 +10,7 @@ import {
 import { type BillStatus, billStatusSchema } from "@vamp-bills/backend/domain/bill/status.ts";
 import { derivedReadiness } from "@vamp-bills/backend/domain/bill/transitions.ts";
 import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -32,11 +32,13 @@ import {
 // the public API contract); routes.ts wires them onto procedures.
 
 export type ListInput = {
-  status?: BillStatus | "all";
+  status?: BillStatus | BillStatus[] | "all";
   scope?: "mine" | "approving" | "all";
 };
 export const listInputShape = z.object({
-  status: billStatusSchema.or(z.literal("all")).optional(),
+  status: z
+    .union([billStatusSchema, z.array(billStatusSchema).min(1), z.literal("all")])
+    .optional(),
   scope: z.enum(["mine", "approving", "all"]).optional(),
 });
 
@@ -75,7 +77,11 @@ export type BillIdInput = z.infer<typeof billIdInputShape>;
 export async function list({ input, ctx }: { input: ListInput | undefined; ctx: AuthedCtx }) {
   const filters = [];
   if (input?.status && input.status !== "all") {
-    filters.push(eq(bills.status, input.status));
+    if (Array.isArray(input.status)) {
+      filters.push(inArray(bills.status, input.status));
+    } else {
+      filters.push(eq(bills.status, input.status));
+    }
   }
   if (input?.scope === "mine") {
     filters.push(eq(bills.createdBy, ctx.user.id));
