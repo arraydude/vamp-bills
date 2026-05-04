@@ -121,6 +121,14 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   hand-written validators.** Adding a column to a Drizzle table flows
   through to the Zod schema automatically — no second edit needed.
   Reference: [`domain/bill/schemas.ts`](./packages/backend/src/domain/bill/schemas.ts).
+- **TanStack Router: code-based configuration.** Routes use `createRoute`
+  with explicit `getParentRoute` + `addChildren`, assembled in
+  [`packages/frontend/src/router.ts`](./packages/frontend/src/router.ts).
+  Pathless layout routes use `id: "_app"` (no `path`). **Do not** introduce
+  `createFileRoute`, the `@tanstack/router-plugin` Vite plugin, or a
+  generated `routeTree.gen.ts` — the file-based scanner was removed in the
+  App Shell PR. Reference: TanStack Router docs page
+  `routing/code-based-routing.md`.
 - **No parent-relative imports.** Use the workspace package name
   (`@vamp-bills/backend/...`, `@workspace/ui/...`) for any cross-directory
   import — same syntax for self-imports inside a package and for imports

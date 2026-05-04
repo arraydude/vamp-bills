@@ -153,6 +153,14 @@ A Payment is created when the user clicks Mark as paid on an approved bill. The 
 
 ### UI surfaces
 
+> **Implementation note (App Shell PR):** the chrome — collapsible sidebar
+> + breadcrumb header + outlet — is wired in
+> [`packages/frontend/src/components/app-shell/`](../packages/frontend/src/components/app-shell/)
+> and mounted via the pathless `_app` layout route in
+> [`packages/frontend/src/routes/_app.tsx`](../packages/frontend/src/routes/_app.tsx).
+> `/` redirects to `/bills`. The Bills surface itself (tabs, filters, table)
+> ships in a follow-up PR.
+
 **Bills list page** (the main view)
 - 4 tabs across the top, each a pre-baked status filter:
   - `Drafts` (Missing Info + Ready)
