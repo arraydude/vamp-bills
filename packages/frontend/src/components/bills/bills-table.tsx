@@ -1,4 +1,12 @@
+import { IconSearch } from "@tabler/icons-react";
 import { flexRender, type Table } from "@tanstack/react-table";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@workspace/ui/components/empty";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import {
   TableBody,
@@ -28,8 +36,12 @@ export function BillsTable({
   }
 
   const rows = table.getRowModel().rows;
+  const hasData = (table.options.data?.length ?? 0) > 0;
 
   if (rows.length === 0) {
+    if (hasData) {
+      return <NoResults />;
+    }
     return <BillsEmptyState tab={tab} />;
   }
 
@@ -64,6 +76,20 @@ export function BillsTable({
         ))}
       </TableBody>
     </UITable>
+  );
+}
+
+function NoResults() {
+  return (
+    <Empty className="border">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <IconSearch />
+        </EmptyMedia>
+        <EmptyTitle>No results</EmptyTitle>
+        <EmptyDescription>No bills match your search. Try a different query.</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }
 
