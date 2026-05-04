@@ -1,5 +1,5 @@
 import { IconFileInvoice, IconLogout, IconReceipt } from "@tabler/icons-react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -33,11 +33,10 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await authClient.signOut();
-    await navigate({ to: "/" });
+    window.location.href = "/login";
   };
 
   return (

@@ -1,13 +1,21 @@
 import { createRouter } from "@tanstack/react-router";
-
 import { appLayoutRoute } from "@/routes/_app.tsx";
 import { billsRoute } from "@/routes/bills.tsx";
 import { indexRoute } from "@/routes/index.tsx";
+import { loginRoute } from "@/routes/login.tsx";
+import type { RouterContext } from "@/routes/root.tsx";
 import { rootRoute } from "@/routes/root.tsx";
 
-const routeTree = rootRoute.addChildren([indexRoute, appLayoutRoute.addChildren([billsRoute])]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  loginRoute,
+  appLayoutRoute.addChildren([billsRoute]),
+]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree,
+  context: { auth: { data: null, isPending: true, error: null } } satisfies RouterContext,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {
