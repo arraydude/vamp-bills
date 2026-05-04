@@ -31,6 +31,12 @@ const decimalAmount = z.string().regex(/^\d+(\.\d{1,2})?$/, {
 // successfully submitted.
 const usdLiteral = z.literal("USD");
 
+// FK + required-text refinements live here (not only on `readyBillSchema`)
+// because the DB enforces them too — the FK columns are notNull text, so
+// drizzle-zod produces `z.string()`, which silently accepts `""`. Without
+// these refinements, `bills.create` accepts an empty `vendorId` /
+// `approverId` and the insert fails at the FK boundary with a 500. Reject
+// at the input layer, surface a sensible Zod error, no DB round-trip.
 export const insertBillSchema = createInsertSchema(bills)
   .omit({
     id: true,
@@ -40,6 +46,10 @@ export const insertBillSchema = createInsertSchema(bills)
     updatedAt: true,
   })
   .extend({
+    vendorId: requiredText("vendor"),
+    approverId: requiredText("approver"),
+    invoiceNumber: requiredText("invoice_number"),
+    description: requiredText("description"),
     currency: usdLiteral,
   });
 
@@ -64,12 +74,13 @@ export const insertLineItemSchema = createInsertSchema(billLineItems)
 //  - the eventual UI "what's blocking submit?" display (via `missingPaths`)
 export const readyBillSchema = insertBillSchema
   .extend({
-    vendorId: requiredText("vendor"),
-    approverId: requiredText("approver"),
-    invoiceNumber: requiredText("invoice_number"),
-    description: requiredText("description"),
+    // vendorId / approverId / invoiceNumber / description / currency are
+    // already required-text or usd-literal on the insertBillSchema base.
+    // What's added at the "ready" layer:
+    //   - totalAmount must match the decimal regex (insert allows any string),
+    //   - ≥1 line item, each fully validated,
+    //   - line item amounts must reconcile with totalAmount (superRefine below).
     totalAmount: decimalAmount,
-    // currency: USD literal already enforced by insertBillSchema base.
     lineItems: z
       .array(
         z.object({
