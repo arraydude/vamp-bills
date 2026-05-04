@@ -85,7 +85,8 @@ export type BillSummary = Pick<Bill, "id" | "status" | "totalAmount">;
   stylistic.
 - **Branch model:** `feature/...` → `develop` (preview) → `main` (prod). See
   [`docs/contributing.md`](./docs/contributing.md). Never push directly to
-  `main`.
+  `main`. **Feature branch PRs must target `develop`**, not `main` — use
+  `gh pr create --base develop` (or `gh pr edit --base develop` to fix).
 - **Commits via spec:** when phased work is in flight, follow the spec
   in `.claude/specs/<NAME>_SPEC.md`. Each phase ends with a Completion
   Report appended to the spec and a Progress Tracker checkbox flip.

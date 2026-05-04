@@ -6,11 +6,34 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@workspace/ui/components/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@workspace/ui/components/field";
 import { Input } from "@workspace/ui/components/input";
 import { cn } from "@workspace/ui/lib/utils";
+import type { FormEvent } from "react";
 
-export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
+type LoginFormProps = Omit<React.ComponentProps<"div">, "onSubmit"> & {
+  onSubmit?: (data: { email: string; password: string }) => void;
+  onGoogleSignIn?: () => void;
+  isPending?: boolean;
+  error?: string | null;
+};
+
+export function LoginForm({
+  className,
+  onSubmit,
+  onGoogleSignIn,
+  isPending = false,
+  error,
+  ...props
+}: LoginFormProps) {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    onSubmit?.({ email, password });
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -19,32 +42,29 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
           <CardDescription>Enter your email below to login to your account</CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={handleSubmit}>
             <FieldGroup>
+              {error && <FieldError>{error}</FieldError>}
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input id="email" type="email" placeholder="m@example.com" required />
+                <Input id="email" name="email" type="email" placeholder="m@example.com" required />
               </Field>
               <Field>
-                <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <a
-                    href="#"
-                    className="ms-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
-                <Input id="password" type="password" required />
+                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <Input id="password" name="password" type="password" required />
               </Field>
               <Field>
-                <Button type="submit">Login</Button>
-                <Button variant="outline" type="button">
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? "Signing in..." : "Login"}
+                </Button>
+                <Button
+                  variant="outline"
+                  type="button"
+                  disabled={isPending}
+                  onClick={onGoogleSignIn}
+                >
                   Login with Google
                 </Button>
-                <FieldDescription className="text-center">
-                  Don&apos;t have an account? <a href="#">Sign up</a>
-                </FieldDescription>
               </Field>
             </FieldGroup>
           </form>

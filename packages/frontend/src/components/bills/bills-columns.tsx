@@ -21,9 +21,6 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
 
 function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "—";
-  // Postgres date columns return "YYYY-MM-DD". Passing that directly to
-  // new Date() parses as UTC midnight, which shifts to the previous calendar
-  // day in western timezones. Appending T00:00:00 forces local-time parsing.
   const parsed =
     typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)
       ? new Date(date + "T00:00:00")
