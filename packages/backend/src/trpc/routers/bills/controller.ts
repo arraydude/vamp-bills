@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { billLineItems, bills, payments, vendors } from "@vamp-bills/backend/db/app-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
+import type { BillEventType } from "@vamp-bills/backend/domain/bill/events.ts";
 import { insertBillSchema, insertLineItemSchema } from "@vamp-bills/backend/domain/bill/schemas.ts";
 import { type BillStatus, billStatusSchema } from "@vamp-bills/backend/domain/bill/status.ts";
 import { and, desc, eq } from "drizzle-orm";
@@ -11,15 +12,16 @@ import {
   assertApprover,
   assertCreator,
   type BillRow,
+  type Bundle,
   type HydratedBill,
   hydrate,
   loadBundle,
+  type PaymentRow,
   transitionOrThrow,
 } from "./helpers.ts";
 
-// Zod input schemas live in `routes.ts` (public API contract). The inferred
-// types are imported here so handlers stay strongly typed without owning
-// the schema definitions.
+// Zod input schemas live here next to the handlers (they're load-bearing for
+// the public API contract); routes.ts wires them onto procedures.
 
 export type ListInput = {
   status?: BillStatus | "all";
@@ -44,7 +46,7 @@ export const updateInputShape = insertBillSchema.partial().extend({
 export const billIdInputShape = z.object({ id: z.string().min(1) });
 export type BillIdInput = z.infer<typeof billIdInputShape>;
 
-// ─── handlers ──────────────────────────────────────────────────────────────
+// ─── non-lifecycle handlers ────────────────────────────────────────────────
 
 export async function list({ input, ctx }: { input: ListInput | undefined; ctx: AuthedCtx }) {
   const filters = [];
@@ -168,177 +170,84 @@ export async function update({
   return hydrate(updated.bill, updated.lineItems, bundle.payment);
 }
 
-// ─── lifecycle handlers (one per BillEvent) ────────────────────────────────
+// ─── lifecycle factory ─────────────────────────────────────────────────────
+//
+// All seven lifecycle mutations (submit/approve/reject/markPaid/cancelPayment/
+// archive/edit) share the same body: load → assert role → transition → write
+// status → optional payment side effect → hydrate. The factory below
+// parameterizes the three things that vary (event, role, side effect) and
+// the routes.ts entries collapse to one declarative line each.
+//
+// `transitionOrThrow` returns the current status for unguarded self-actions
+// like CANCEL_PAYMENT; we skip the bills update when status doesn't change
+// so the no-op event is cheap and the intent is explicit.
 
-export async function submit({
-  input,
-  ctx,
-}: {
-  input: BillIdInput;
-  ctx: AuthedCtx;
-}): Promise<HydratedBill> {
-  const bundle = await loadBundle(input.id);
-  assertCreator(bundle.bill, ctx.user.id);
-  const nextStatus = transitionOrThrow(bundle.bill.status, { type: "SUBMIT" }, bundle);
-  const [updated] = await db
-    .update(bills)
-    .set({ status: nextStatus })
-    .where(eq(bills.id, input.id))
-    .returning();
-  if (!updated) {
-    throw new TRPCError({ code: "NOT_FOUND", message: `bill ${input.id} not found` });
-  }
-  return hydrate(updated, bundle.lineItems, bundle.payment);
-}
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export async function approve({
-  input,
-  ctx,
-}: {
-  input: BillIdInput;
-  ctx: AuthedCtx;
-}): Promise<HydratedBill> {
-  const bundle = await loadBundle(input.id);
-  assertApprover(bundle.bill, ctx.user.id);
-  const nextStatus = transitionOrThrow(bundle.bill.status, { type: "APPROVE" }, bundle);
-  const [updated] = await db
-    .update(bills)
-    .set({ status: nextStatus })
-    .where(eq(bills.id, input.id))
-    .returning();
-  if (!updated) {
-    throw new TRPCError({ code: "NOT_FOUND", message: `bill ${input.id} not found` });
-  }
-  return hydrate(updated, bundle.lineItems, bundle.payment);
-}
+export type LifecycleSideEffect = (tx: Tx, bundle: Bundle) => Promise<PaymentRow | null>;
 
-export async function reject({
-  input,
-  ctx,
-}: {
-  input: BillIdInput;
-  ctx: AuthedCtx;
-}): Promise<HydratedBill> {
-  const bundle = await loadBundle(input.id);
-  assertApprover(bundle.bill, ctx.user.id);
-  const nextStatus = transitionOrThrow(bundle.bill.status, { type: "REJECT" }, bundle);
-  const [updated] = await db
-    .update(bills)
-    .set({ status: nextStatus })
-    .where(eq(bills.id, input.id))
-    .returning();
-  if (!updated) {
-    throw new TRPCError({ code: "NOT_FOUND", message: `bill ${input.id} not found` });
-  }
-  return hydrate(updated, bundle.lineItems, bundle.payment);
-}
-
-export async function markPaid({
-  input,
-  ctx,
-}: {
-  input: BillIdInput;
-  ctx: AuthedCtx;
-}): Promise<HydratedBill> {
-  const bundle = await loadBundle(input.id);
-  assertCreator(bundle.bill, ctx.user.id);
-  const nextStatus = transitionOrThrow(bundle.bill.status, { type: "MARK_PAID" }, bundle);
-  const result = await db.transaction(async (tx) => {
-    const [updated] = await tx
-      .update(bills)
-      .set({ status: nextStatus })
-      .where(eq(bills.id, input.id))
-      .returning();
-    if (!updated) {
-      throw new TRPCError({ code: "NOT_FOUND", message: `bill ${input.id} not found` });
-    }
-    const [paymentRow] = await tx
+export const sideEffects = {
+  insertPayment: async (tx, bundle) => {
+    const [row] = await tx
       .insert(payments)
       .values({
-        billId: input.id,
+        billId: bundle.bill.id,
         amount: bundle.bill.totalAmount,
         status: "paid",
         paidAt: new Date(),
       })
       .returning();
-    if (!paymentRow) {
+    if (!row) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "payment insert returned no row",
       });
     }
-    return { bill: updated, payment: paymentRow };
-  });
-  return hydrate(result.bill, bundle.lineItems, result.payment);
-}
+    return row;
+  },
+  cancelLatestPayment: async (tx, bundle) => {
+    if (!bundle.payment) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "no payment to cancel for this bill",
+      });
+    }
+    const [cancelled] = await tx
+      .update(payments)
+      .set({ status: "cancelled" })
+      .where(eq(payments.id, bundle.payment.id))
+      .returning();
+    return cancelled ?? bundle.payment;
+  },
+} satisfies Record<string, LifecycleSideEffect>;
 
-export async function cancelPayment({
-  input,
-  ctx,
-}: {
-  input: BillIdInput;
-  ctx: AuthedCtx;
-}): Promise<HydratedBill> {
-  const bundle = await loadBundle(input.id);
-  assertCreator(bundle.bill, ctx.user.id);
-  // Machine acknowledges this as a self-action — bill stays in approved.
-  // The actual side effect is voiding the most-recent pending Payment row.
-  transitionOrThrow(bundle.bill.status, { type: "CANCEL_PAYMENT" }, bundle);
-  if (!bundle.payment) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "no payment to cancel for this bill",
+export function lifecycle(
+  event: BillEventType,
+  role: "creator" | "approver",
+  sideEffect?: LifecycleSideEffect,
+) {
+  return async ({ input, ctx }: { input: BillIdInput; ctx: AuthedCtx }): Promise<HydratedBill> => {
+    const bundle = await loadBundle(input.id);
+    (role === "creator" ? assertCreator : assertApprover)(bundle.bill, ctx.user.id);
+    const nextStatus = transitionOrThrow(bundle.bill.status, { type: event }, bundle);
+
+    const result = await db.transaction(async (tx) => {
+      let updatedBill: BillRow = bundle.bill;
+      if (nextStatus !== bundle.bill.status) {
+        const [row] = await tx
+          .update(bills)
+          .set({ status: nextStatus })
+          .where(eq(bills.id, input.id))
+          .returning();
+        if (!row) {
+          throw new TRPCError({ code: "NOT_FOUND", message: `bill ${input.id} not found` });
+        }
+        updatedBill = row;
+      }
+      const payment = sideEffect ? await sideEffect(tx, bundle) : bundle.payment;
+      return { bill: updatedBill, payment };
     });
-  }
-  const [cancelled] = await db
-    .update(payments)
-    .set({ status: "cancelled" })
-    .where(eq(payments.id, bundle.payment.id))
-    .returning();
-  return hydrate(bundle.bill, bundle.lineItems, cancelled ?? bundle.payment);
-}
 
-export async function archive({
-  input,
-  ctx,
-}: {
-  input: BillIdInput;
-  ctx: AuthedCtx;
-}): Promise<HydratedBill> {
-  const bundle = await loadBundle(input.id);
-  assertCreator(bundle.bill, ctx.user.id);
-  const nextStatus = transitionOrThrow(bundle.bill.status, { type: "ARCHIVE" }, bundle);
-  const [updated] = await db
-    .update(bills)
-    .set({ status: nextStatus })
-    .where(eq(bills.id, input.id))
-    .returning();
-  if (!updated) {
-    throw new TRPCError({ code: "NOT_FOUND", message: `bill ${input.id} not found` });
-  }
-  return hydrate(updated, bundle.lineItems, bundle.payment);
-}
-
-export async function edit({
-  input,
-  ctx,
-}: {
-  input: BillIdInput;
-  ctx: AuthedCtx;
-}): Promise<HydratedBill> {
-  // Standalone EDIT — fires the transition without modifying fields.
-  // Useful when the UI surfaces an explicit "request changes again" affordance
-  // separate from the field-edit form. Field edits go through `update`.
-  const bundle = await loadBundle(input.id);
-  assertCreator(bundle.bill, ctx.user.id);
-  const nextStatus = transitionOrThrow(bundle.bill.status, { type: "EDIT" }, bundle);
-  const [updated] = await db
-    .update(bills)
-    .set({ status: nextStatus })
-    .where(eq(bills.id, input.id))
-    .returning();
-  if (!updated) {
-    throw new TRPCError({ code: "NOT_FOUND", message: `bill ${input.id} not found` });
-  }
-  return hydrate(updated, bundle.lineItems, bundle.payment);
+    return hydrate(result.bill, bundle.lineItems, result.payment);
+  };
 }
