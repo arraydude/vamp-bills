@@ -1,5 +1,5 @@
 import { IconFileInvoice, IconLogout, IconReceipt } from "@tabler/icons-react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import {
   Sidebar,
@@ -11,7 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { authClient } from "@/lib/auth-client.ts";
 
@@ -33,13 +33,19 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
   const [signingOut, setSigningOut] = useState(false);
 
-  const handleSignOut = () => {
+  useEffect(() => {
+    if (signingOut && !session) {
+      router.invalidate();
+    }
+  }, [signingOut, session, router]);
+
+  const handleSignOut = async () => {
     setSigningOut(true);
-    authClient.signOut().finally(() => {
-      window.location.href = "/login";
-    });
+    await authClient.signOut();
   };
 
   return (

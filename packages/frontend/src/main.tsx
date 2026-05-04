@@ -13,7 +13,12 @@ import { router } from "@/router.ts";
 
 function App() {
   const session = authClient.useSession();
-  return <RouterProvider router={router} context={{ auth: session }} />;
+  return (
+    <RouterProvider
+      router={router}
+      context={{ auth: { data: session.data, isPending: session.isPending } }}
+    />
+  );
 }
 
 // biome-ignore lint/style/noNonNullAssertion: index.html guarantees #root exists

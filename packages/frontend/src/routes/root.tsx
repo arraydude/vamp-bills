@@ -1,13 +1,15 @@
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 
-type SessionState = {
-  data: { session: Record<string, unknown>; user: Record<string, unknown> } | null;
-  isPending: boolean;
-  error: { message: string } | null;
+type SessionData = {
+  session: Record<string, unknown>;
+  user: Record<string, unknown>;
 };
 
 export type RouterContext = {
-  auth: SessionState;
+  auth: {
+    data: SessionData | null;
+    isPending: boolean;
+  };
 };
 
 export const rootRoute = createRootRouteWithContext<RouterContext>()({
