@@ -1,17 +1,23 @@
+import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 
-// Resolve .env paths from this file's location, not the process CWD.
-// dotenv.config({ path }) is CWD-relative by default; using import.meta.url
-// makes loading robust whether the server is launched from the package dir
-// or anywhere else (CI, monorepo task runners, etc.).
-// File: packages/backend/src/env.ts → workspace root is three levels up.
-const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, "../../..");
+// Resolve .env paths from the workspace root, whether the server is launched
+// from the repo root, a package script cwd, or a bundled Vercel function.
+const repoRoot = findWorkspaceRoot(process.cwd());
 
 loadEnv({ path: [path.join(repoRoot, ".env.local"), path.join(repoRoot, ".env")] });
+
+function findWorkspaceRoot(start: string): string {
+  let dir = path.resolve(start);
+  while (true) {
+    if (fs.existsSync(path.join(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return path.resolve(start);
+    dir = parent;
+  }
+}
 
 const schema = z.object({
   DATABASE_URL: z.string().url(),

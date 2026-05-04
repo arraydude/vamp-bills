@@ -1,15 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @vamp-bills/frontend build",
+  "buildCommand": "pnpm build:api && pnpm --filter @vamp-bills/frontend build",
   "outputDirectory": "packages/frontend/dist",
   "rewrites": [
     { "source": "/trpc/(.*)", "destination": "/api/index" },
     { "source": "/api/auth/(.*)", "destination": "/api/index" }
-  ],
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "{packages/backend/{src,drizzle,node_modules}/**,node_modules/.pnpm/{@trpc+server*,better-auth*,cors*,dotenv*,drizzle-orm*,drizzle-zod*,express*,pg@*,xstate*,zod@*}/node_modules/**}"
-    }
-  }
+  ]
 }

@@ -5,6 +5,8 @@ node_modules/
 # Build outputs
 dist/
 build/
+.vercel-build/
+api/index.js.map
 .turbo/
 .cache/
 coverage/

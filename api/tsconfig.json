@@ -11,5 +11,5 @@
     "noEmit": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["**/*.ts", "../packages/backend/src/**/*.ts"]
+  "include": ["../api-src/**/*.ts", "../packages/backend/src/**/*.ts"]
 }

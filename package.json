@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r build",
+    "build:api": "node tools/build-api.mjs",
     "dev": "pnpm -r --parallel dev",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
@@ -25,6 +26,7 @@
     "@biomejs/biome": "^2.4.14",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.6.0",
+    "esbuild": "0.27.7",
     "eslint": "^10.3.0",
     "eslint-plugin-react-compiler": "19.1.0-rc.2",
     "eslint-plugin-react-hooks": "^7.1.1",
