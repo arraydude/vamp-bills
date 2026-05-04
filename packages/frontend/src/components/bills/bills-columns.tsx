@@ -13,13 +13,19 @@ const usdFormat = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
+const dateFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
 function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "—";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(date));
+  const parsed =
+    typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? new Date(date + "T00:00:00")
+      : new Date(date);
+  return dateFormat.format(parsed);
 }
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
