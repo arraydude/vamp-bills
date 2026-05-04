@@ -83,7 +83,7 @@ function BillsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Bills</h1>
-        <Button size="sm">
+        <Button size="sm" onClick={() => navigate({ to: "/bills/new" })}>
           <IconPlus className="size-4" />
           New bill
         </Button>
@@ -112,7 +112,12 @@ function BillsPage() {
         />
       </div>
 
-      <BillsTable table={table} tab={tab} isLoading={isLoading} />
+      <BillsTable
+        table={table}
+        tab={tab}
+        isLoading={isLoading}
+        onRowClick={(id) => navigate({ to: "/bills/$billId", params: { billId: id } })}
+      />
     </div>
   );
 }
