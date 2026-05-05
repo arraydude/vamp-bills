@@ -14,11 +14,6 @@ const usdFormat = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
-function formatDate(date: string | null): string {
-  if (!date) return "—";
-  return format(parseISO(date), "MMM d, yyyy");
-}
-
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
   if (sorted === "asc") return <IconArrowUp className="size-3.5" />;
   if (sorted === "desc") return <IconArrowDown className="size-3.5" />;
@@ -78,7 +73,8 @@ export const columns: ColumnDef<BillListItem, unknown>[] = [
         <SortIcon sorted={column.getIsSorted()} />
       </button>
     ),
-    cell: ({ row }) => formatDate(row.original.dueDate),
+    cell: ({ row }) =>
+      row.original.dueDate ? format(parseISO(row.original.dueDate), "MMM d, yyyy") : "—",
     sortingFn: (a, b, columnId) => {
       const dateA = a.getValue<string | null>(columnId);
       const dateB = b.getValue<string | null>(columnId);
@@ -97,7 +93,7 @@ export const columns: ColumnDef<BillListItem, unknown>[] = [
   {
     accessorKey: "createdAt",
     header: "Created",
-    cell: ({ row }) => formatDate(row.original.createdAt),
+    cell: ({ row }) => format(parseISO(row.original.createdAt), "MMM d, yyyy"),
     enableSorting: false,
   },
 ];
