@@ -59,14 +59,7 @@ export function DatePickerField({
             mode="single"
             selected={parsed}
             onSelect={(date) => {
-              if (date) {
-                const y = date.getFullYear();
-                const m = String(date.getMonth() + 1).padStart(2, "0");
-                const d = String(date.getDate()).padStart(2, "0");
-                onChange(`${y}-${m}-${d}`);
-              } else {
-                onChange(null);
-              }
+              onChange(date ? format(date, "yyyy-MM-dd") : null);
               setOpen(false);
             }}
             autoFocus

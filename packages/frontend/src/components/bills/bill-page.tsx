@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Textarea } from "@workspace/ui/components/textarea";
+import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -64,10 +65,6 @@ function mapErrors(errors: ReadonlyArray<unknown>): Array<{ message?: string } |
 
 function defaultValues(bill: HydratedBill | null, userId: string): BillFormValues {
   if (!bill) {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, "0");
-    const d = String(today.getDate()).padStart(2, "0");
     return {
       vendorId: "",
       approverId: userId,
@@ -75,7 +72,7 @@ function defaultValues(bill: HydratedBill | null, userId: string): BillFormValue
       description: "",
       currency: "USD",
       totalAmount: "0.00",
-      invoiceDate: `${y}-${m}-${d}`,
+      invoiceDate: format(new Date(), "yyyy-MM-dd"),
       dueDate: null,
       lineItems: [{ description: "", amount: "", position: 0 }],
     };

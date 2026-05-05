@@ -2,6 +2,7 @@ import { IconArrowDown, IconArrowUp, IconSelector } from "@tabler/icons-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@vamp-bills/backend/trpc/router";
+import { compareAsc, format, parseISO } from "date-fns";
 
 import { StatusBadge } from "@/components/bills/status-badge.tsx";
 
@@ -13,19 +14,9 @@ const usdFormat = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
-const dateFormat = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-
 function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "—";
-  const parsed =
-    typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)
-      ? new Date(date + "T00:00:00")
-      : new Date(date);
-  return dateFormat.format(parsed);
+  return format(typeof date === "string" ? parseISO(date) : date, "MMM d, yyyy");
 }
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
@@ -94,7 +85,7 @@ export const columns: ColumnDef<BillListItem, unknown>[] = [
       if (!dateA && !dateB) return 0;
       if (!dateA) return 1;
       if (!dateB) return -1;
-      return new Date(dateA).getTime() - new Date(dateB).getTime();
+      return compareAsc(parseISO(dateA), parseISO(dateB));
     },
   },
   {
