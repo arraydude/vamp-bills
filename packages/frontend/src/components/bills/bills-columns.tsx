@@ -14,9 +14,9 @@ const usdFormat = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
-function formatDate(date: string | Date | null | undefined): string {
+function formatDate(date: string | null): string {
   if (!date) return "—";
-  return format(typeof date === "string" ? parseISO(date) : date, "MMM d, yyyy");
+  return format(parseISO(date), "MMM d, yyyy");
 }
 
 function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
