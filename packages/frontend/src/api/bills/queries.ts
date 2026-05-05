@@ -8,7 +8,7 @@ type RouterOutputs = inferRouterOutputs<AppRouter>;
 export type BillListItem = RouterOutputs["bills"]["list"][number];
 export type HydratedBill = RouterOutputs["bills"]["getById"];
 
-type BillStatus = "draft" | "awaiting_approval" | "approved" | "rejected" | "paid" | "archived";
+export type BillStatus = BillListItem["status"];
 
 export function useBillsList(filters: { status: readonly BillStatus[] }) {
   const trpc = useTRPC();
