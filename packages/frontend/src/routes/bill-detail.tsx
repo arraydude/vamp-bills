@@ -4,11 +4,11 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 
 import { BillPage } from "@/components/bills/bill-page.tsx";
 import { useTRPC } from "@/lib/trpc.ts";
-import { appLayoutRoute } from "@/routes/_app.tsx";
+import { billsRoute } from "@/routes/bills.tsx";
 
 export const billDetailRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: "/bills/$billId",
+  getParentRoute: () => billsRoute,
+  path: "/$billId",
   component: BillDetailPage,
 });
 

@@ -1,6 +1,6 @@
 import { IconPlus, IconSearch } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import {
   getCoreRowModel,
   getFilteredRowModel,
@@ -44,13 +44,19 @@ const TAB_LABELS: Record<TabValue, string> = {
 export const billsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/bills",
+  component: () => <Outlet />,
+});
+
+export const billsIndexRoute = createRoute({
+  getParentRoute: () => billsRoute,
+  path: "/",
   validateSearch: (search): z.output<typeof billsSearchSchema> => billsSearchSchema.parse(search),
   component: BillsPage,
 });
 
 function BillsPage() {
-  const { tab = "drafts" } = billsRoute.useSearch();
-  const navigate = useNavigate({ from: billsRoute.fullPath });
+  const { tab = "drafts" } = billsIndexRoute.useSearch();
+  const navigate = useNavigate({ from: billsIndexRoute.fullPath });
 
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);

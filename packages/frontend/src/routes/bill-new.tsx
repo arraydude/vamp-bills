@@ -1,10 +1,10 @@
 import { createRoute } from "@tanstack/react-router";
 
 import { BillPage } from "@/components/bills/bill-page.tsx";
-import { appLayoutRoute } from "@/routes/_app.tsx";
+import { billsRoute } from "@/routes/bills.tsx";
 
 export const billNewRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: "/bills/new",
+  getParentRoute: () => billsRoute,
+  path: "/new",
   component: () => <BillPage bill={null} />,
 });

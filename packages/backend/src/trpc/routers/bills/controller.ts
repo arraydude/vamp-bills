@@ -233,13 +233,7 @@ export async function update({
     const [billRow] = await tx
       .update(bills)
       .set({ ...patch, status: nextStatus })
-      .where(
-        and(
-          eq(bills.id, id),
-          eq(bills.status, bundle.bill.status),
-          eq(bills.updatedAt, bundle.bill.updatedAt),
-        ),
-      )
+      .where(and(eq(bills.id, id), eq(bills.status, bundle.bill.status)))
       .returning();
     if (!billRow) {
       throw new TRPCError({
@@ -365,13 +359,7 @@ export function lifecycle(
         const [row] = await tx
           .update(bills)
           .set({ status: nextStatus })
-          .where(
-            and(
-              eq(bills.id, input.id),
-              eq(bills.status, bundle.bill.status),
-              eq(bills.updatedAt, bundle.bill.updatedAt),
-            ),
-          )
+          .where(and(eq(bills.id, input.id), eq(bills.status, bundle.bill.status)))
           .returning();
         if (!row) {
           throw new TRPCError({

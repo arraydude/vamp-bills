@@ -16,7 +16,9 @@ import { Input } from "@workspace/ui/components/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
@@ -139,6 +141,12 @@ export function BillPage({ bill: initialBill }: BillPageProps) {
   });
 
   useEffect(() => {
+    if (userId && !form.state.values.approverId) {
+      form.setFieldValue("approverId", userId);
+    }
+  }, [form, userId]);
+
+  useEffect(() => {
     form.setFieldValue("totalAmount", computeTotal(form.state.values.lineItems));
   }, [form, form.state.values.lineItems]);
 
@@ -197,19 +205,23 @@ export function BillPage({ bill: initialBill }: BillPageProps) {
                     <Field>
                       <FieldLabel htmlFor={field.name}>Vendor</FieldLabel>
                       <Select
-                        value={field.state.value}
-                        onValueChange={(val) => field.handleChange(val as string)}
+                        value={field.state.value || null}
+                        onValueChange={(val) => field.handleChange((val as string) ?? "")}
+                        items={vendors.map((v) => ({ value: v.id, label: v.name }))}
                         disabled={!editable}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select a vendor…" />
                         </SelectTrigger>
                         <SelectContent>
-                          {vendors.map((v) => (
-                            <SelectItem key={v.id} value={v.id}>
-                              {v.name}
-                            </SelectItem>
-                          ))}
+                          <SelectGroup>
+                            <SelectLabel>Vendors</SelectLabel>
+                            {vendors.map((v) => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {v.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                       <FieldError errors={mapErrors(field.state.meta.errors)} />
