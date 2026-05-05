@@ -15,7 +15,6 @@ import { StatusBadge } from "@/components/bills/status-badge.tsx";
 
 type BillActionsProps = {
   bill: HydratedBill;
-  onUpdate?: (updated: HydratedBill) => void;
 };
 
 const EVENT_LABEL: Record<string, string> = {
@@ -45,17 +44,15 @@ const EVENT_TO_PROCEDURE: Record<string, string> = {
   ARCHIVE: "archive",
 };
 
-export function BillActions({ bill, onUpdate }: BillActionsProps) {
+export function BillActions({ bill }: BillActionsProps) {
   const billId = bill.bill.id;
   const isSelfApproved = bill.bill.approverId === bill.bill.createdBy;
-
-  const callbackOpts = { onSuccess: onUpdate };
-  const submit = useSubmitBill(callbackOpts);
-  const approve = useApproveBill(callbackOpts);
-  const reject = useRejectBill(callbackOpts);
-  const markPaid = useMarkBillPaid(callbackOpts);
-  const cancelPayment = useCancelBillPayment(callbackOpts);
-  const archive = useArchiveBill(callbackOpts);
+  const submit = useSubmitBill();
+  const approve = useApproveBill();
+  const reject = useRejectBill();
+  const markPaid = useMarkBillPaid();
+  const cancelPayment = useCancelBillPayment();
+  const archive = useArchiveBill();
 
   const mutations: Record<string, { mutate: (input: { id: string }) => void; isPending: boolean }> =
     {

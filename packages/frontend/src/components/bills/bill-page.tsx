@@ -21,7 +21,7 @@ import {
 } from "@workspace/ui/components/select";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { format } from "date-fns";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { z } from "zod";
 
 import { useCreateBill, useUpdateBill } from "@/api/bills/mutations.ts";
@@ -103,8 +103,7 @@ type BillPageProps = {
   bill: HydratedBill | null;
 };
 
-export function BillPage({ bill: initialBill }: BillPageProps) {
-  const [bill, setBill] = useState(initialBill);
+export function BillPage({ bill }: BillPageProps) {
   const navigate = useNavigate();
   const { data: sessionData } = authClient.useSession();
   const userId = (sessionData?.user?.id as string) ?? "";
@@ -118,9 +117,7 @@ export function BillPage({ bill: initialBill }: BillPageProps) {
     onSuccess: (data) => void navigate({ to: "/bills/$billId", params: { billId: data.bill.id } }),
   });
 
-  const updateBill = useUpdateBill({
-    onSuccess: (data) => setBill(data),
-  });
+  const updateBill = useUpdateBill();
 
   const form = useForm({
     defaultValues: defaultValues(bill, userId),
@@ -356,7 +353,7 @@ export function BillPage({ bill: initialBill }: BillPageProps) {
 
         {bill && (
           <aside className="w-full shrink-0 md:w-72">
-            <BillActions bill={bill} onUpdate={setBill} />
+            <BillActions bill={bill} />
           </aside>
         )}
       </div>
