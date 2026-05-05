@@ -225,13 +225,19 @@ export async function update({
   }
 
   const updated = await db.transaction(async (tx) => {
-    // Optimistic lock on status. Catches cross-status races (concurrent
-    // archive vs approve). Same-status races (two draft saves) are low-risk
-    // for MVP — last write wins.
+    // Optimistic lock on (status, updatedAt). Postgres trigger sets
+    // updated_at = now() on every UPDATE, so the value read by
+    // loadBundle matches exactly — no JS Date precision loss.
     const [billRow] = await tx
       .update(bills)
       .set({ ...patch, status: nextStatus })
-      .where(and(eq(bills.id, id), eq(bills.status, bundle.bill.status)))
+      .where(
+        and(
+          eq(bills.id, id),
+          eq(bills.status, bundle.bill.status),
+          eq(bills.updatedAt, bundle.bill.updatedAt),
+        ),
+      )
       .returning();
     if (!billRow) {
       throw new TRPCError({
@@ -306,7 +312,7 @@ export const sideEffects = {
         billId: bundle.bill.id,
         amount: bundle.bill.totalAmount,
         status: "paid",
-        paidAt: new Date(),
+        paidAt: new Date().toISOString(),
       })
       .returning();
     if (!row) {
@@ -347,14 +353,18 @@ export function lifecycle(
       let updatedBill: BillRow = bundle.bill;
       let payment = bundle.payment;
       if (nextStatus !== bundle.bill.status) {
-        // Optimistic lock on status. Catches cross-status races (concurrent
-        // archive vs approve). Same-status races are prevented by the
-        // nextStatus !== current guard above — no lifecycle event is a
-        // self-action, so this branch only fires on real transitions.
+        // Optimistic lock on (status, updatedAt). Postgres trigger sets
+        // updated_at = now() on every UPDATE — no JS Date precision loss.
         const [row] = await tx
           .update(bills)
           .set({ status: nextStatus })
-          .where(and(eq(bills.id, input.id), eq(bills.status, bundle.bill.status)))
+          .where(
+            and(
+              eq(bills.id, input.id),
+              eq(bills.status, bundle.bill.status),
+              eq(bills.updatedAt, bundle.bill.updatedAt),
+            ),
+          )
           .returning();
         if (!row) {
           throw new TRPCError({

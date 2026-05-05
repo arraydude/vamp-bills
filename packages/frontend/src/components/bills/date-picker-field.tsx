@@ -4,7 +4,7 @@ import { Calendar } from "@workspace/ui/components/calendar";
 import { Field, FieldError, FieldLabel } from "@workspace/ui/components/field";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { cn } from "@workspace/ui/lib/utils";
-import { format, parse } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { useState } from "react";
 
 type DatePickerFieldProps = {
@@ -29,7 +29,8 @@ export function DatePickerField({
   disabled,
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
-  const parsed = value ? parse(value, "yyyy-MM-dd", new Date()) : undefined;
+  const candidate = value ? parse(value, "yyyy-MM-dd", new Date()) : undefined;
+  const parsed = candidate && isValid(candidate) ? candidate : undefined;
 
   return (
     <Field>
@@ -45,6 +46,7 @@ export function DatePickerField({
           render={
             <Button
               id={id}
+              type="button"
               variant="outline"
               disabled={disabled}
               className={cn("w-full justify-start font-normal", !value && "text-muted-foreground")}
