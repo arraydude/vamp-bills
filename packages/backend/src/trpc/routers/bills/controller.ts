@@ -225,11 +225,9 @@ export async function update({
   }
 
   const updated = await db.transaction(async (tx) => {
-    // Optimistic lock via (status, updatedAt). Status alone catches
-    // cross-status races (concurrent archive vs approve), but two same-status
-    // edits (e.g. two draft saves from different tabs) both pass the status
-    // predicate. Pinning updatedAt — which `$onUpdate` advances on every
-    // write — converts that race into a CONFLICT too.
+    // Optimistic lock on status. Catches cross-status races (concurrent
+    // archive vs approve). Same-status races (two draft saves) are low-risk
+    // for MVP — last write wins.
     const [billRow] = await tx
       .update(bills)
       .set({ ...patch, status: nextStatus })
@@ -349,13 +347,10 @@ export function lifecycle(
       let updatedBill: BillRow = bundle.bill;
       let payment = bundle.payment;
       if (nextStatus !== bundle.bill.status) {
-        // Optimistic lock on (status, updatedAt). Status alone catches
-        // cross-status races (concurrent archive vs approve); updatedAt
-        // catches same-status races (two concurrent markPaid calls each
-        // trying to insert a payment row). The `$onUpdate` on the column
-        // advances on every write, so any concurrent edit that sneaks in
-        // between loadBundle() and this UPDATE bumps the timestamp and
-        // makes our predicate fail.
+        // Optimistic lock on status. Catches cross-status races (concurrent
+        // archive vs approve). Same-status races are prevented by the
+        // nextStatus !== current guard above — no lifecycle event is a
+        // self-action, so this branch only fires on real transitions.
         const [row] = await tx
           .update(bills)
           .set({ status: nextStatus })

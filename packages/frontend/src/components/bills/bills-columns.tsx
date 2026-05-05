@@ -2,12 +2,18 @@ import { IconArrowDown, IconArrowUp, IconSelector } from "@tabler/icons-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@vamp-bills/backend/trpc/router";
-import { compareAsc, format, parseISO } from "date-fns";
+import { compareAsc, format, parse, parseISO } from "date-fns";
 
 import { StatusBadge } from "@/components/bills/status-badge.tsx";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 export type BillListItem = RouterOutputs["bills"]["list"][number];
+
+function parseDate(value: string): Date {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? parse(value, "yyyy-MM-dd", new Date())
+    : parseISO(value);
+}
 
 const usdFormat = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -74,14 +80,14 @@ export const columns: ColumnDef<BillListItem, unknown>[] = [
       </button>
     ),
     cell: ({ row }) =>
-      row.original.dueDate ? format(parseISO(row.original.dueDate), "MMM d, yyyy") : "—",
+      row.original.dueDate ? format(parseDate(row.original.dueDate), "MMM d, yyyy") : "—",
     sortingFn: (a, b, columnId) => {
       const dateA = a.getValue<string | null>(columnId);
       const dateB = b.getValue<string | null>(columnId);
       if (!dateA && !dateB) return 0;
       if (!dateA) return 1;
       if (!dateB) return -1;
-      return compareAsc(parseISO(dateA), parseISO(dateB));
+      return compareAsc(parseDate(dateA), parseDate(dateB));
     },
   },
   {
@@ -93,7 +99,7 @@ export const columns: ColumnDef<BillListItem, unknown>[] = [
   {
     accessorKey: "createdAt",
     header: "Created",
-    cell: ({ row }) => format(parseISO(row.original.createdAt), "MMM d, yyyy"),
+    cell: ({ row }) => format(parseDate(row.original.createdAt), "MMM d, yyyy"),
     enableSorting: false,
   },
 ];

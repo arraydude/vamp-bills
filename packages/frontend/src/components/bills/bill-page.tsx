@@ -311,34 +311,47 @@ export function BillPage({ bill: initialBill }: BillPageProps) {
                       })
                     }
                     onRemove={(index) => arrayField.removeValue(index)}
-                    getDescriptionField={(index) => ({
-                      name: `lineItems[${index}].description`,
-                      value: arrayField.state.value[index]?.description ?? "",
-                      errors: [],
-                      handleBlur: () => {},
-                      handleChange: (val) => {
-                        const items = [...arrayField.state.value];
-                        const item = items[index];
-                        if (item) {
-                          items[index] = { ...item, description: val };
-                          arrayField.handleChange(items);
-                        }
-                      },
-                    })}
-                    getAmountField={(index) => ({
-                      name: `lineItems[${index}].amount`,
-                      value: arrayField.state.value[index]?.amount ?? "",
-                      errors: [],
-                      handleBlur: () => {},
-                      handleChange: (val) => {
-                        const items = [...arrayField.state.value];
-                        const item = items[index];
-                        if (item) {
-                          items[index] = { ...item, amount: val };
-                          arrayField.handleChange(items);
-                        }
-                      },
-                    })}
+                    renderItemFields={(index) => (
+                      <>
+                        <form.Field name={`lineItems[${index}].description`}>
+                          {(field) => (
+                            <Field className="flex-1">
+                              {index === 0 && (
+                                <FieldLabel htmlFor={field.name}>Description</FieldLabel>
+                              )}
+                              <Input
+                                id={field.name}
+                                name={field.name}
+                                placeholder="Line item description"
+                                value={field.state.value as string}
+                                onBlur={field.handleBlur}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                disabled={!editable}
+                              />
+                              <FieldError errors={mapErrors(field.state.meta.errors)} />
+                            </Field>
+                          )}
+                        </form.Field>
+                        <form.Field name={`lineItems[${index}].amount`}>
+                          {(field) => (
+                            <Field className="w-28">
+                              {index === 0 && <FieldLabel htmlFor={field.name}>Amount</FieldLabel>}
+                              <Input
+                                id={field.name}
+                                name={field.name}
+                                placeholder="0.00"
+                                className="text-right"
+                                value={field.state.value as string}
+                                onBlur={field.handleBlur}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                disabled={!editable}
+                              />
+                              <FieldError errors={mapErrors(field.state.meta.errors)} />
+                            </Field>
+                          )}
+                        </form.Field>
+                      </>
+                    )}
                   />
                 )}
               </form.Field>

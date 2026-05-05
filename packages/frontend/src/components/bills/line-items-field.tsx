@@ -1,8 +1,9 @@
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { Button } from "@workspace/ui/components/button";
-import { Field, FieldError, FieldLabel, FieldSeparator } from "@workspace/ui/components/field";
-import { Input } from "@workspace/ui/components/input";
+import { FieldError, FieldSeparator } from "@workspace/ui/components/field";
 import { Item, ItemActions, ItemContent, ItemGroup } from "@workspace/ui/components/item";
+import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 
 export type LineItem = {
   description: string;
@@ -12,22 +13,13 @@ export type LineItem = {
 
 type FieldErrors = Array<{ message?: string } | undefined>;
 
-type LineItemField = {
-  name: string;
-  value: string;
-  errors: FieldErrors;
-  handleBlur: () => void;
-  handleChange: (value: string) => void;
-};
-
 type LineItemsFieldProps = {
   items: LineItem[];
   disabled?: boolean;
   arrayErrors?: FieldErrors;
   onAdd: () => void;
   onRemove: (index: number) => void;
-  getDescriptionField: (index: number) => LineItemField;
-  getAmountField: (index: number) => LineItemField;
+  renderItemFields: (index: number) => ReactNode;
 };
 
 function toCents(amount: string): number {
@@ -36,79 +28,66 @@ function toCents(amount: string): number {
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
 
+let nextKeyId = 0;
+function generateKey(): number {
+  return ++nextKeyId;
+}
+
 export function LineItemsField({
   items,
   disabled,
   arrayErrors,
   onAdd,
   onRemove,
-  getDescriptionField,
-  getAmountField,
+  renderItemFields,
 }: LineItemsFieldProps) {
   const totalCents = items.reduce((acc, li) => acc + toCents(li.amount), 0);
+
+  const [keys, setKeys] = useState(() => items.map(() => generateKey()));
+
+  const handleAdd = useCallback(() => {
+    setKeys((prev) => [...prev, generateKey()]);
+    onAdd();
+  }, [onAdd]);
+
+  const handleRemove = useCallback(
+    (index: number) => {
+      setKeys((prev) => prev.filter((_, i) => i !== index));
+      onRemove(index);
+    },
+    [onRemove],
+  );
 
   return (
     <div className="flex flex-col gap-4">
       <FieldSeparator>Line items</FieldSeparator>
 
       <ItemGroup>
-        {items.map((item, index) => {
-          const desc = getDescriptionField(index);
-          const amt = getAmountField(index);
+        {items.map((_item, index) => (
+          <Item key={keys[index]} variant="outline" size="sm" role="listitem">
+            <ItemContent className="flex-row items-center gap-2">
+              {renderItemFields(index)}
+            </ItemContent>
 
-          return (
-            <Item key={`li-${item.position}`} variant="outline" size="sm">
-              <ItemContent className="flex-row items-center gap-2">
-                <Field className="flex-1">
-                  {index === 0 && <FieldLabel htmlFor={desc.name}>Description</FieldLabel>}
-                  <Input
-                    id={desc.name}
-                    name={desc.name}
-                    placeholder="Line item description"
-                    value={desc.value}
-                    onBlur={desc.handleBlur}
-                    onChange={(e) => desc.handleChange(e.target.value)}
-                    disabled={disabled}
-                  />
-                  <FieldError errors={desc.errors} />
-                </Field>
-
-                <Field className="w-28">
-                  {index === 0 && <FieldLabel htmlFor={amt.name}>Amount</FieldLabel>}
-                  <Input
-                    id={amt.name}
-                    name={amt.name}
-                    placeholder="0.00"
-                    className="text-right"
-                    value={amt.value}
-                    onBlur={amt.handleBlur}
-                    onChange={(e) => amt.handleChange(e.target.value)}
-                    disabled={disabled}
-                  />
-                  <FieldError errors={amt.errors} />
-                </Field>
-              </ItemContent>
-
-              <ItemActions>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  type="button"
-                  disabled={disabled || items.length <= 1}
-                  onClick={() => onRemove(index)}
-                >
-                  <IconTrash className="size-4" />
-                </Button>
-              </ItemActions>
-            </Item>
-          );
-        })}
+            <ItemActions>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                type="button"
+                disabled={disabled || items.length <= 1}
+                onClick={() => handleRemove(index)}
+              >
+                <IconTrash className="size-4" />
+              </Button>
+            </ItemActions>
+          </Item>
+        ))}
       </ItemGroup>
 
       <FieldError errors={arrayErrors} />
 
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" type="button" disabled={disabled} onClick={onAdd}>
+        <Button variant="outline" size="sm" type="button" disabled={disabled} onClick={handleAdd}>
           <IconPlus className="size-4" />
           Add line item
         </Button>
