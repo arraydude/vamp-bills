@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 
+import { useBillById } from "@/api/bills/queries.ts";
 import { BillPage } from "@/components/bills/bill-page.tsx";
-import { useTRPC } from "@/lib/trpc.ts";
 import { billsRoute } from "@/routes/bills.tsx";
 
 export const billDetailRoute = createRoute({
@@ -14,8 +13,7 @@ export const billDetailRoute = createRoute({
 
 function BillDetailPage() {
   const { billId } = billDetailRoute.useParams();
-  const trpc = useTRPC();
-  const { data, isLoading, error } = useQuery(trpc.bills.getById.queryOptions({ id: billId }));
+  const { data, isLoading, error } = useBillById(billId);
 
   if (isLoading) {
     return (

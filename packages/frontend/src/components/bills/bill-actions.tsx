@@ -1,17 +1,17 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { inferRouterOutputs } from "@trpc/server";
-import type { AppRouter } from "@vamp-bills/backend/trpc/router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { toast } from "sonner";
 
+import {
+  useApproveBill,
+  useArchiveBill,
+  useCancelBillPayment,
+  useMarkBillPaid,
+  useRejectBill,
+  useSubmitBill,
+} from "@/api/bills/mutations.ts";
+import type { HydratedBill } from "@/api/bills/queries.ts";
 import { StatusBadge } from "@/components/bills/status-badge.tsx";
-import { useTRPC } from "@/lib/trpc.ts";
-
-type RouterOutputs = inferRouterOutputs<AppRouter>;
-type HydratedBill = RouterOutputs["bills"]["getById"];
-type BillEventType = HydratedBill["availableEvents"][number];
 
 type BillActionsProps = {
   bill: HydratedBill;
@@ -25,7 +25,6 @@ const EVENT_LABEL: Record<string, string> = {
   MARK_PAID: "Mark as paid",
   CANCEL_PAYMENT: "Cancel payment",
   ARCHIVE: "Archive",
-  EDIT: "Edit",
 };
 
 const EVENT_VARIANT: Record<string, "default" | "outline" | "destructive" | "ghost"> = {
@@ -35,7 +34,6 @@ const EVENT_VARIANT: Record<string, "default" | "outline" | "destructive" | "gho
   MARK_PAID: "default",
   CANCEL_PAYMENT: "destructive",
   ARCHIVE: "ghost",
-  EDIT: "outline",
 };
 
 const EVENT_TO_PROCEDURE: Record<string, string> = {
@@ -48,93 +46,30 @@ const EVENT_TO_PROCEDURE: Record<string, string> = {
 };
 
 export function BillActions({ bill, onUpdate }: BillActionsProps) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const billId = bill.bill.id;
   const isSelfApproved = bill.bill.approverId === bill.bill.createdBy;
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
-    void queryClient.invalidateQueries({
-      queryKey: trpc.bills.getById.queryKey({ id: billId }),
-    });
-  };
-
-  const submitMutation = useMutation(
-    trpc.bills.submit.mutationOptions({
-      onSuccess: (data) => {
-        invalidate();
-        toast.success("Bill submitted for approval");
-        onUpdate?.(data);
-      },
-    }),
-  );
-
-  const approveMutation = useMutation(
-    trpc.bills.approve.mutationOptions({
-      onSuccess: (data) => {
-        invalidate();
-        toast.success("Bill approved");
-        onUpdate?.(data);
-      },
-    }),
-  );
-
-  const rejectMutation = useMutation(
-    trpc.bills.reject.mutationOptions({
-      onSuccess: (data) => {
-        invalidate();
-        toast.success("Bill rejected");
-        onUpdate?.(data);
-      },
-    }),
-  );
-
-  const markPaidMutation = useMutation(
-    trpc.bills.markPaid.mutationOptions({
-      onSuccess: (data) => {
-        invalidate();
-        toast.success("Bill marked as paid");
-        onUpdate?.(data);
-      },
-    }),
-  );
-
-  const cancelPaymentMutation = useMutation(
-    trpc.bills.cancelPayment.mutationOptions({
-      onSuccess: (data) => {
-        invalidate();
-        toast.success("Payment cancelled");
-        onUpdate?.(data);
-      },
-    }),
-  );
-
-  const archiveMutation = useMutation(
-    trpc.bills.archive.mutationOptions({
-      onSuccess: (data) => {
-        invalidate();
-        toast.success("Bill archived");
-        onUpdate?.(data);
-      },
-    }),
-  );
+  const callbackOpts = { onSuccess: onUpdate };
+  const submit = useSubmitBill(callbackOpts);
+  const approve = useApproveBill(callbackOpts);
+  const reject = useRejectBill(callbackOpts);
+  const markPaid = useMarkBillPaid(callbackOpts);
+  const cancelPayment = useCancelBillPayment(callbackOpts);
+  const archive = useArchiveBill(callbackOpts);
 
   const mutations: Record<string, { mutate: (input: { id: string }) => void; isPending: boolean }> =
     {
-      submit: submitMutation,
-      approve: approveMutation,
-      reject: rejectMutation,
-      markPaid: markPaidMutation,
-      cancelPayment: cancelPaymentMutation,
-      archive: archiveMutation,
+      submit,
+      approve,
+      reject,
+      markPaid,
+      cancelPayment,
+      archive,
     };
 
   const anyPending = Object.values(mutations).some((m) => m.isPending);
 
-  const visibleEvents = bill.availableEvents.filter(
-    (e): e is BillEventType => e !== "EDIT" && e in EVENT_TO_PROCEDURE,
-  );
+  const visibleEvents = bill.availableEvents.filter((e) => e !== "EDIT" && e in EVENT_TO_PROCEDURE);
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,5 +1,4 @@
 import { IconPlus, IconSearch } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
 import { createRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import {
   getCoreRowModel,
@@ -14,10 +13,10 @@ import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { useState } from "react";
 import { z } from "zod";
 
+import { useBillsList } from "@/api/bills/queries.ts";
 import { columns } from "@/components/bills/bills-columns.tsx";
 import type { TabValue } from "@/components/bills/bills-empty-state.tsx";
 import { BillsTable } from "@/components/bills/bills-table.tsx";
-import { useTRPC } from "@/lib/trpc.ts";
 import { appLayoutRoute } from "@/routes/_app.tsx";
 
 const billsSearchSchema = z.object({
@@ -61,12 +60,7 @@ function BillsPage() {
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const trpc = useTRPC();
-  const { data, isLoading } = useQuery(
-    trpc.bills.list.queryOptions({
-      status: [...TAB_STATUS_MAP[tab]],
-    }),
-  );
+  const { data, isLoading } = useBillsList({ status: [...TAB_STATUS_MAP[tab]] });
 
   // eslint-disable-next-line react-hooks/incompatible-library -- table instance is consumed within this component only; compiler already skips memoization
   const table = useReactTable({

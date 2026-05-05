@@ -1,9 +1,6 @@
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useForm } from "@tanstack/react-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { inferRouterOutputs } from "@trpc/server";
-import type { AppRouter } from "@vamp-bills/backend/trpc/router";
 import { Button } from "@workspace/ui/components/button";
 import {
   Field,
@@ -25,17 +22,14 @@ import {
 import { Textarea } from "@workspace/ui/components/textarea";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { z } from "zod";
 
+import { useCreateBill, useUpdateBill } from "@/api/bills/mutations.ts";
+import { type HydratedBill, useVendorsList } from "@/api/bills/queries.ts";
 import { BillActions } from "@/components/bills/bill-actions.tsx";
 import { DatePickerField } from "@/components/bills/date-picker-field.tsx";
 import { LineItemsField } from "@/components/bills/line-items-field.tsx";
 import { authClient } from "@/lib/auth-client.ts";
-import { useTRPC } from "@/lib/trpc.ts";
-
-type RouterOutputs = inferRouterOutputs<AppRouter>;
-type HydratedBill = RouterOutputs["bills"]["getById"];
 
 const billFormSchema = z.object({
   vendorId: z.string().min(1, "Vendor is required"),
@@ -111,8 +105,6 @@ type BillPageProps = {
 
 export function BillPage({ bill: initialBill }: BillPageProps) {
   const [bill, setBill] = useState(initialBill);
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: sessionData } = authClient.useSession();
   const userId = (sessionData?.user?.id as string) ?? "";
@@ -120,7 +112,15 @@ export function BillPage({ bill: initialBill }: BillPageProps) {
   const isNew = bill === null;
   const editable = isNew || bill.bill.status === "draft" || bill.availableEvents.includes("EDIT");
 
-  const { data: vendors = [] } = useQuery(trpc.vendors.list.queryOptions());
+  const { data: vendors = [] } = useVendorsList();
+
+  const createBill = useCreateBill({
+    onSuccess: (data) => void navigate({ to: "/bills/$billId", params: { billId: data.bill.id } }),
+  });
+
+  const updateBill = useUpdateBill({
+    onSuccess: (data) => setBill(data),
+  });
 
   const form = useForm({
     defaultValues: defaultValues(bill, userId),
@@ -149,29 +149,6 @@ export function BillPage({ bill: initialBill }: BillPageProps) {
   useEffect(() => {
     form.setFieldValue("totalAmount", computeTotal(form.state.values.lineItems));
   }, [form, form.state.values.lineItems]);
-
-  const createBill = useMutation(
-    trpc.bills.create.mutationOptions({
-      onSuccess: (data) => {
-        void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
-        toast.success("Bill created");
-        void navigate({ to: "/bills/$billId", params: { billId: data.bill.id } });
-      },
-    }),
-  );
-
-  const updateBill = useMutation(
-    trpc.bills.update.mutationOptions({
-      onSuccess: (data) => {
-        void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
-        void queryClient.invalidateQueries({
-          queryKey: trpc.bills.getById.queryKey({ id: data.bill.id }),
-        });
-        toast.success("Bill saved");
-        setBill(data);
-      },
-    }),
-  );
 
   const isPending = createBill.isPending || updateBill.isPending;
 
