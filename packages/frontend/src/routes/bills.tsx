@@ -1,6 +1,5 @@
 import { IconPlus, IconSearch } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
-import { createRoute, useNavigate } from "@tanstack/react-router";
+import { createRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import {
   getCoreRowModel,
   getFilteredRowModel,
@@ -14,10 +13,10 @@ import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { useState } from "react";
 import { z } from "zod";
 
+import { useBillsList } from "@/api/bills/queries.ts";
 import { columns } from "@/components/bills/bills-columns.tsx";
 import type { TabValue } from "@/components/bills/bills-empty-state.tsx";
 import { BillsTable } from "@/components/bills/bills-table.tsx";
-import { useTRPC } from "@/lib/trpc.ts";
 import { appLayoutRoute } from "@/routes/_app.tsx";
 
 const billsSearchSchema = z.object({
@@ -44,23 +43,24 @@ const TAB_LABELS: Record<TabValue, string> = {
 export const billsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/bills",
+  component: () => <Outlet />,
+});
+
+export const billsIndexRoute = createRoute({
+  getParentRoute: () => billsRoute,
+  path: "/",
   validateSearch: (search): z.output<typeof billsSearchSchema> => billsSearchSchema.parse(search),
   component: BillsPage,
 });
 
 function BillsPage() {
-  const { tab = "drafts" } = billsRoute.useSearch();
-  const navigate = useNavigate({ from: billsRoute.fullPath });
+  const { tab = "drafts" } = billsIndexRoute.useSearch();
+  const navigate = useNavigate({ from: billsIndexRoute.fullPath });
 
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const trpc = useTRPC();
-  const { data, isLoading } = useQuery(
-    trpc.bills.list.queryOptions({
-      status: [...TAB_STATUS_MAP[tab]],
-    }),
-  );
+  const { data, isLoading } = useBillsList({ status: [...TAB_STATUS_MAP[tab]] });
 
   // eslint-disable-next-line react-hooks/incompatible-library -- table instance is consumed within this component only; compiler already skips memoization
   const table = useReactTable({
@@ -83,7 +83,7 @@ function BillsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Bills</h1>
-        <Button size="sm">
+        <Button size="sm" onClick={() => navigate({ to: "/bills/new" })}>
           <IconPlus className="size-4" />
           New bill
         </Button>
@@ -112,7 +112,12 @@ function BillsPage() {
         />
       </div>
 
-      <BillsTable table={table} tab={tab} isLoading={isLoading} />
+      <BillsTable
+        table={table}
+        tab={tab}
+        isLoading={isLoading}
+        onRowClick={(id) => navigate({ to: "/bills/$billId", params: { billId: id } })}
+      />
     </div>
   );
 }

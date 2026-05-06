@@ -1,0 +1,102 @@
+import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { Button } from "@workspace/ui/components/button";
+import { FieldError, FieldSeparator } from "@workspace/ui/components/field";
+import { Item, ItemActions, ItemContent, ItemGroup } from "@workspace/ui/components/item";
+import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
+
+export type LineItem = {
+  description: string;
+  amount: string;
+  position: number;
+};
+
+type FieldErrors = Array<{ message?: string } | undefined>;
+
+type LineItemsFieldProps = {
+  items: LineItem[];
+  disabled?: boolean;
+  arrayErrors?: FieldErrors;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  renderItemFields: (index: number) => ReactNode;
+};
+
+function toCents(amount: string): number {
+  if (amount.trim() === "") return 0;
+  const n = Number(amount);
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
+
+let nextKeyId = 0;
+function generateKey(): number {
+  return ++nextKeyId;
+}
+
+export function LineItemsField({
+  items,
+  disabled,
+  arrayErrors,
+  onAdd,
+  onRemove,
+  renderItemFields,
+}: LineItemsFieldProps) {
+  const totalCents = items.reduce((acc, li) => acc + toCents(li.amount), 0);
+
+  const [keys, setKeys] = useState(() => items.map(() => generateKey()));
+
+  const handleAdd = useCallback(() => {
+    setKeys((prev) => [...prev, generateKey()]);
+    onAdd();
+  }, [onAdd]);
+
+  const handleRemove = useCallback(
+    (index: number) => {
+      setKeys((prev) => prev.filter((_, i) => i !== index));
+      onRemove(index);
+    },
+    [onRemove],
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <FieldSeparator>Line items</FieldSeparator>
+
+      <ItemGroup>
+        {items.map((_item, index) => (
+          <Item key={keys[index]} variant="outline" size="sm" role="listitem">
+            <ItemContent className="flex-row items-center gap-2">
+              {renderItemFields(index)}
+            </ItemContent>
+
+            <ItemActions>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                type="button"
+                aria-label="Remove line item"
+                disabled={disabled || items.length <= 1}
+                onClick={() => handleRemove(index)}
+              >
+                <IconTrash className="size-4" />
+              </Button>
+            </ItemActions>
+          </Item>
+        ))}
+      </ItemGroup>
+
+      <FieldError errors={arrayErrors} />
+
+      <div className="flex items-center justify-between">
+        <Button variant="outline" size="sm" type="button" disabled={disabled} onClick={handleAdd}>
+          <IconPlus className="size-4" />
+          Add line item
+        </Button>
+
+        <div className="text-sm font-medium tabular-nums">
+          Total: ${(totalCents / 100).toFixed(2)}
+        </div>
+      </div>
+    </div>
+  );
+}
