@@ -74,6 +74,7 @@ export function LineItemsField({
                 variant="ghost"
                 size="icon-sm"
                 type="button"
+                aria-label="Remove line item"
                 disabled={disabled || items.length <= 1}
                 onClick={() => handleRemove(index)}
               >
