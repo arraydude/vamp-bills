@@ -225,11 +225,9 @@ export async function update({
   }
 
   const updated = await db.transaction(async (tx) => {
-    // Optimistic lock via (status, updatedAt). Status alone catches
-    // cross-status races (concurrent archive vs approve), but two same-status
-    // edits (e.g. two draft saves from different tabs) both pass the status
-    // predicate. Pinning updatedAt — which `$onUpdate` advances on every
-    // write — converts that race into a CONFLICT too.
+    // Optimistic lock on (status, updatedAt). Postgres trigger sets
+    // updated_at = now() on every UPDATE, so the value read by
+    // loadBundle matches exactly — no JS Date precision loss.
     const [billRow] = await tx
       .update(bills)
       .set({ ...patch, status: nextStatus })
@@ -314,7 +312,7 @@ export const sideEffects = {
         billId: bundle.bill.id,
         amount: bundle.bill.totalAmount,
         status: "paid",
-        paidAt: new Date(),
+        paidAt: new Date().toISOString(),
       })
       .returning();
     if (!row) {
@@ -355,13 +353,8 @@ export function lifecycle(
       let updatedBill: BillRow = bundle.bill;
       let payment = bundle.payment;
       if (nextStatus !== bundle.bill.status) {
-        // Optimistic lock on (status, updatedAt). Status alone catches
-        // cross-status races (concurrent archive vs approve); updatedAt
-        // catches same-status races (two concurrent markPaid calls each
-        // trying to insert a payment row). The `$onUpdate` on the column
-        // advances on every write, so any concurrent edit that sneaks in
-        // between loadBundle() and this UPDATE bumps the timestamp and
-        // makes our predicate fail.
+        // Optimistic lock on (status, updatedAt). Postgres trigger sets
+        // updated_at = now() on every UPDATE — no JS Date precision loss.
         const [row] = await tx
           .update(bills)
           .set({ status: nextStatus })

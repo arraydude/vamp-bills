@@ -31,11 +31,8 @@ export const vendors = pgTable(
     id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
     name: text("name").notNull(),
     email: text("email").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
   },
   (table) => [index("vendors_name_idx").on(table.name)],
 );
@@ -60,11 +57,8 @@ export const bills = pgTable(
     createdBy: text("created_by")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
   },
   (table) => [
     index("bills_status_idx").on(table.status),
@@ -86,11 +80,8 @@ export const billLineItems = pgTable(
     description: text("description").notNull(),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     position: integer("position").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
   },
   (table) => [index("bill_line_items_bill_id_idx").on(table.billId)],
 );
@@ -105,13 +96,10 @@ export const payments = pgTable(
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     status: paymentStatusEnum("status").default("pending").notNull(),
     paymentMethod: paymentMethodEnum("payment_method").default("manual_off_platform").notNull(),
-    paidAt: timestamp("paid_at"),
+    paidAt: timestamp("paid_at", { mode: "string" }),
     reference: text("reference"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).defaultNow().notNull(),
   },
   (table) => [
     index("payments_bill_id_idx").on(table.billId),
