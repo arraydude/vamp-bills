@@ -101,11 +101,9 @@ function BillsPage() {
             return (
               <TabsTrigger key={key} value={key}>
                 {TAB_LABELS[key]}
-                {count > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 tabular-nums">
-                    {count}
-                  </Badge>
-                )}
+                <Badge variant="secondary" className="ml-1.5 tabular-nums">
+                  {count}
+                </Badge>
               </TabsTrigger>
             );
           })}
