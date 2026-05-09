@@ -32,7 +32,7 @@ const loginFormSchema = z.object({
 });
 
 const signupFormSchema = loginFormSchema.extend({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().trim().min(1, "Name is required"),
 });
 
 export const loginRoute = createRoute({
@@ -59,11 +59,12 @@ function LoginPage() {
     defaultValues: { name: "", email: "", password: "" },
     validators: { onSubmit: isSignup ? signupFormSchema : loginFormSchema },
     onSubmit: async ({ value }) => {
+      const { email, password } = value;
       if (isSignup) {
-        const { ok } = await signUp(value);
+        const { ok } = await signUp({ email, password, name: value.name ?? "" });
         if (ok) navigate({ to: target });
       } else {
-        const { ok } = await signIn(value);
+        const { ok } = await signIn({ email, password });
         if (ok) navigate({ to: target });
       }
     },
