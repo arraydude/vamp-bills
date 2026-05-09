@@ -8,7 +8,6 @@ export const appLayoutProtectedRoute = createRoute({
   id: "_app",
   component: AppShell,
   beforeLoad: ({ context, location }) => {
-    if (context.auth.isPending) return;
     if (!context.auth.data) {
       throw redirect({ to: "/login", search: { redirect: location.pathname } });
     }

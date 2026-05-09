@@ -10,9 +10,9 @@ import { rootRoute } from "@/routes/root.tsx";
 import { vendorsIndexRoute, vendorsRoute } from "@/routes/vendors.tsx";
 
 const routeTree = rootRoute.addChildren([
-  indexRoute,
   loginRoute,
   appLayoutProtectedRoute.addChildren([
+    indexRoute,
     billsRoute.addChildren([billsIndexRoute, billNewRoute, billDetailRoute]),
     vendorsRoute.addChildren([vendorsIndexRoute]),
   ]),
