@@ -25,7 +25,8 @@ import { useEffect } from "react";
 import { z } from "zod";
 
 import { useCreateBill, useUpdateBill } from "@/api/bills/mutations.ts";
-import { type HydratedBill, useVendorsList } from "@/api/bills/queries.ts";
+import type { HydratedBill } from "@/api/bills/queries.ts";
+import { useVendorsList } from "@/api/vendors/queries.ts";
 import { BillActions } from "@/components/bills/bill-actions.tsx";
 import { DatePickerField } from "@/components/bills/date-picker-field.tsx";
 import { LineItemsField } from "@/components/bills/line-items-field.tsx";
