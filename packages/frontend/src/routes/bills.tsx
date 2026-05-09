@@ -10,10 +10,10 @@ import {
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { useState } from "react";
 import { z } from "zod";
-
 import { useBillsCounts, useBillsList } from "@/api/bills/queries.ts";
 import { columns } from "@/components/bills/bills-columns.tsx";
 import type { TabValue } from "@/components/bills/bills-empty-state.tsx";
@@ -102,7 +102,7 @@ function BillsPage() {
               <TabsTrigger key={key} value={key}>
                 {TAB_LABELS[key]}
                 <Badge variant="secondary" className="ml-1.5 tabular-nums">
-                  {count}
+                  {isLoading ? <Skeleton className="size-2" /> : count}
                 </Badge>
               </TabsTrigger>
             );
