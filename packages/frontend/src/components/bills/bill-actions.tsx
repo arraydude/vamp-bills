@@ -75,6 +75,13 @@ export function BillActions({ bill }: BillActionsProps) {
           Status
         </span>
         <StatusBadge status={bill.bill.status} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Approver
+        </span>
+        <span className="text-sm">{bill.approverName ?? "Unknown"}</span>
         {isSelfApproved && (
           <Badge variant="outline" className="gap-1 text-amber-600">
             <IconAlertTriangle className="size-3" />

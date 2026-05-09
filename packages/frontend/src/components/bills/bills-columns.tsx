@@ -91,6 +91,12 @@ export const columns: ColumnDef<BillListItem, unknown>[] = [
     },
   },
   {
+    accessorKey: "approverName",
+    header: "Approver",
+    cell: ({ row }) => row.original.approverName ?? "—",
+    enableSorting: false,
+  },
+  {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => <StatusBadge status={row.original.status} />,
