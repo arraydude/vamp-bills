@@ -1,6 +1,6 @@
 import { IconFileInvoice, IconMoon, IconReceipt, IconSun, IconUsers } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { DropdownMenuGroup, DropdownMenuItem } from "@workspace/ui/components/dropdown-menu";
+import { DropdownMenuItem } from "@workspace/ui/components/dropdown-menu";
 import { Kbd } from "@workspace/ui/components/kbd";
 import { NavUser } from "@workspace/ui/components/nav-user";
 import {
@@ -94,13 +94,11 @@ export function AppSidebar() {
             }}
             onSignOut={() => void signOut()}
           >
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
-                {isDark ? <IconSun className="size-4" /> : <IconMoon className="size-4" />}
-                <span className="flex-1">Toggle theme</span>
-                <Kbd>D</Kbd>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
+              {isDark ? <IconSun className="size-4" /> : <IconMoon className="size-4" />}
+              <span className="flex-1">Toggle theme</span>
+              <Kbd>D</Kbd>
+            </DropdownMenuItem>
           </NavUser>
         )}
       </SidebarFooter>
