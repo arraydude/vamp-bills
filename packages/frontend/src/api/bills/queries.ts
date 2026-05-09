@@ -23,7 +23,7 @@ export function useBillsCounts() {
   const trpc = useTRPC();
   const { data } = useQuery(trpc.bills.list.queryOptions({ status: "all" }));
 
-  const counts: Record<string, number> = {};
+  const counts: Partial<Record<BillStatus, number>> = {};
   if (data) {
     for (const bill of data) {
       counts[bill.status] = (counts[bill.status] ?? 0) + 1;
