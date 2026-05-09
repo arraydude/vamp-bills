@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { useState } from "react";
 import { z } from "zod";
 
-import { useBillsList } from "@/api/bills/queries.ts";
+import { useBillsCounts, useBillsList } from "@/api/bills/queries.ts";
 import { columns } from "@/components/bills/bills-columns.tsx";
 import type { TabValue } from "@/components/bills/bills-empty-state.tsx";
 import { BillsTable } from "@/components/bills/bills-table.tsx";
@@ -61,6 +61,7 @@ function BillsPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const { data, isLoading } = useBillsList({ status: [...TAB_STATUS_MAP[tab]] });
+  const statusCounts = useBillsCounts();
 
   // eslint-disable-next-line react-hooks/incompatible-library -- table instance is consumed within this component only; compiler already skips memoization
   const table = useReactTable({
@@ -94,11 +95,19 @@ function BillsPage() {
         onValueChange={(newTab) => navigate({ search: { tab: newTab as TabValue } })}
       >
         <TabsList variant="line">
-          {(Object.keys(TAB_LABELS) as TabValue[]).map((key) => (
-            <TabsTrigger key={key} value={key}>
-              {TAB_LABELS[key]}
-            </TabsTrigger>
-          ))}
+          {(Object.keys(TAB_LABELS) as TabValue[]).map((key) => {
+            const count = TAB_STATUS_MAP[key].reduce((sum, s) => sum + (statusCounts[s] ?? 0), 0);
+            return (
+              <TabsTrigger key={key} value={key}>
+                {TAB_LABELS[key]}
+                {count > 0 && (
+                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
+                    {count}
+                  </span>
+                )}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
       </Tabs>
 
