@@ -158,7 +158,7 @@ export function BillActions({ bill }: BillActionsProps) {
         </div>
       )}
 
-      <MarkPaidDialog open={markPaidOpen} onOpenChange={setMarkPaidOpen} billId={billId} />
+      {markPaidOpen && <MarkPaidDialog open onOpenChange={setMarkPaidOpen} billId={billId} />}
     </div>
   );
 }
