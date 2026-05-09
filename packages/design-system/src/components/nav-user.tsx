@@ -25,7 +25,7 @@ type NavUserProps = {
     email: string;
     avatar?: string;
   };
-  onSignOut?: () => void;
+  onSignOut: () => void;
   children?: React.ReactNode;
 };
 

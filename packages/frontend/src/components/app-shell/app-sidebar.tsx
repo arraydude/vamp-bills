@@ -15,7 +15,6 @@ import {
 } from "@workspace/ui/components/sidebar";
 
 import { useTheme } from "@/components/theme-provider.tsx";
-import { authClient } from "@/lib/auth-client.ts";
 import { useAuth } from "@/lib/use-auth.ts";
 
 type NavItem = {
@@ -42,8 +41,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { signOut } = useAuth();
-  const { data: session } = authClient.useSession();
+  const { signOut, session } = useAuth();
   const { theme, setTheme } = useTheme();
 
   const isDark = theme === "dark";
@@ -86,11 +84,11 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        {session?.user && (
+        {session && (
           <NavUser
             user={{
-              name: session.user.name as string,
-              email: session.user.email as string,
+              name: session.user.name,
+              email: session.user.email,
             }}
             onSignOut={() => void signOut()}
           >
