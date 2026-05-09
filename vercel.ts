@@ -32,6 +32,7 @@ export const config: VercelConfig = {
   rewrites: [
     { source: "/trpc/(.*)", destination: "/api/index" },
     { source: "/api/auth/(.*)", destination: "/api/index" },
+    { source: "/((?!trpc|api).*)", destination: "/index.html" },
   ],
   functions: {
     "api/index.ts": {
