@@ -1,16 +1,8 @@
-import {
-  IconFileInvoice,
-  IconLogout,
-  IconMoon,
-  IconReceipt,
-  IconSun,
-  IconUsers,
-} from "@tabler/icons-react";
+import { IconFileInvoice, IconMoon, IconReceipt, IconSun, IconUsers } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
-import { Button } from "@workspace/ui/components/button";
+import { DropdownMenuGroup, DropdownMenuItem } from "@workspace/ui/components/dropdown-menu";
 import { Kbd } from "@workspace/ui/components/kbd";
-import { Separator } from "@workspace/ui/components/separator";
+import { NavUser } from "@workspace/ui/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -50,19 +42,11 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { signOut, isTransitioning } = useAuth();
+  const { signOut } = useAuth();
   const { data: session } = authClient.useSession();
   const { theme, setTheme } = useTheme();
 
   const isDark = theme === "dark";
-
-  const handleSignOut = () => {
-    void signOut();
-  };
-
-  const toggleTheme = () => {
-    setTheme(isDark ? "light" : "dark");
-  };
 
   return (
     <Sidebar variant="inset">
@@ -102,39 +86,23 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <div className="flex items-center justify-between px-1">
-          <Button variant="ghost" size="icon-sm" onClick={toggleTheme}>
-            {isDark ? <IconSun className="size-4" /> : <IconMoon className="size-4" />}
-          </Button>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Toggle theme <Kbd>D</Kbd>
-          </span>
-        </div>
-        <Separator />
         {session?.user && (
-          <div className="flex items-center gap-2 px-1 py-1">
-            <Avatar className="size-7">
-              <AvatarFallback className="text-xs">
-                {(session.user.name as string)
-                  .split(" ")
-                  .map((w) => w[0])
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-medium">{session.user.name as string}</span>
-              <span className="truncate text-xs text-muted-foreground">
-                {session.user.email as string}
-              </span>
-            </div>
-          </div>
+          <NavUser
+            user={{
+              name: session.user.name as string,
+              email: session.user.email as string,
+            }}
+            onSignOut={() => void signOut()}
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
+                {isDark ? <IconSun className="size-4" /> : <IconMoon className="size-4" />}
+                <span className="flex-1">Toggle theme</span>
+                <Kbd>D</Kbd>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </NavUser>
         )}
-        <Button variant="ghost" size="sm" onClick={handleSignOut} disabled={isTransitioning}>
-          <IconLogout />
-          {isTransitioning ? "Signing out..." : "Sign out"}
-        </Button>
       </SidebarFooter>
     </Sidebar>
   );
