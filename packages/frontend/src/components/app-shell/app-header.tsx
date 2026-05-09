@@ -20,7 +20,10 @@ export function AppHeader() {
   const title = (routeId && ROUTE_TITLES[routeId]) ?? "";
 
   return (
-    <header className="border-border flex h-14 shrink-0 items-center gap-2 border-b px-4">
+    <header
+      data-slot="app-header"
+      className="border-border flex h-14 shrink-0 items-center gap-2 border-b px-4"
+    >
       <SidebarTrigger />
       <Breadcrumb>
         <BreadcrumbList>

@@ -88,7 +88,14 @@ export function LineItemsField({
       <FieldError errors={arrayErrors} />
 
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" type="button" disabled={disabled} onClick={handleAdd}>
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          disabled={disabled}
+          onClick={handleAdd}
+          className="print:hidden"
+        >
           <IconPlus className="size-4" />
           Add line item
         </Button>
