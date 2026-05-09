@@ -17,7 +17,7 @@ import { useBillsList } from "@/api/bills/queries.ts";
 import { columns } from "@/components/bills/bills-columns.tsx";
 import type { TabValue } from "@/components/bills/bills-empty-state.tsx";
 import { BillsTable } from "@/components/bills/bills-table.tsx";
-import { appLayoutRoute } from "@/routes/_app.tsx";
+import { appLayoutProtectedRoute } from "@/routes/_app.tsx";
 
 const billsSearchSchema = z.object({
   tab: z
@@ -41,7 +41,7 @@ const TAB_LABELS: Record<TabValue, string> = {
 };
 
 export const billsRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
+  getParentRoute: () => appLayoutProtectedRoute,
   path: "/bills",
   component: () => <Outlet />,
 });

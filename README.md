@@ -79,6 +79,8 @@ pnpm dev                   # boot all packages in parallel (`pnpm -r --parallel`
 
 Frontend on `:5173` proxies `/trpc` and `/api/auth` to the backend on `:3000` (configured in `packages/frontend/vite.config.ts`).
 
+> **`INVALID_ORIGIN` on sign-in/sign-out?** Vite's proxy rewrites the `Origin` header, so Better Auth rejects it. Add the frontend and backend origins to `trustedOrigins` in `packages/backend/src/auth.ts` (e.g. `["http://localhost:3000", "http://localhost:5173"]`). If Vite picks a different port, add that too.
+
 ## Scripts
 
 | Command | What it does |
