@@ -7,6 +7,7 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
@@ -101,9 +102,9 @@ function BillsPage() {
               <TabsTrigger key={key} value={key}>
                 {TAB_LABELS[key]}
                 {count > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
+                  <Badge variant="secondary" className="ml-1.5 tabular-nums">
                     {count}
-                  </span>
+                  </Badge>
                 )}
               </TabsTrigger>
             );
