@@ -20,6 +20,7 @@ function useVendorCacheUpdater() {
   return (data: Vendor) => {
     queryClient.setQueryData(trpc.vendors.getById.queryKey({ id: data.id }), data);
     void queryClient.invalidateQueries({ queryKey: trpc.vendors.list.queryKey() });
+    void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
   };
 }
 

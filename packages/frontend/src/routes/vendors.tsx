@@ -87,12 +87,7 @@ function VendorsPage() {
 
       <VendorsTable table={table} isLoading={isLoading} onRowClick={handleRowClick} />
 
-      <VendorFormDialog
-        key={editingVendor?.id ?? "new"}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        vendor={editingVendor}
-      />
+      {dialogOpen && <VendorFormDialog open onOpenChange={setDialogOpen} vendor={editingVendor} />}
     </div>
   );
 }
