@@ -156,7 +156,7 @@ export function BillPage({ bill }: BillPageProps) {
     <div className="flex flex-col gap-6">
       <Link
         to="/bills"
-        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground print:hidden"
       >
         <IconArrowLeft className="size-4" />
         Bills
@@ -365,7 +365,7 @@ export function BillPage({ bill }: BillPageProps) {
               {editable && (
                 <>
                   <FieldSeparator />
-                  <div className="flex justify-end gap-2">
+                  <div className="flex justify-end gap-2 print:hidden">
                     <Button
                       variant="outline"
                       type="button"

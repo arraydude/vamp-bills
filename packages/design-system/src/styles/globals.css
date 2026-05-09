@@ -132,3 +132,27 @@
     cursor: pointer;
   }
 }
+
+@media print {
+  [data-slot="sidebar"],
+  [data-slot="sidebar-trigger"],
+  [data-slot="app-header"] {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  [data-slot="sidebar-inset"] {
+    margin-left: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: white !important;
+  }
+
+  main {
+    padding: 1rem !important;
+  }
+}

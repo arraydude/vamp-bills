@@ -1,4 +1,4 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { IconAlertTriangle, IconPrinter } from "@tabler/icons-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { format } from "date-fns";
@@ -110,8 +110,18 @@ export function BillActions({ bill }: BillActionsProps) {
         </div>
       )}
 
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full justify-start print:hidden"
+        onClick={() => window.print()}
+      >
+        <IconPrinter className="size-4" />
+        Print
+      </Button>
+
       {(visibleEvents.length > 0 || showMarkPaid) && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 print:hidden">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Actions
           </span>
@@ -148,7 +158,7 @@ export function BillActions({ bill }: BillActionsProps) {
       )}
 
       {bill.missingPaths.length > 0 && bill.bill.status === "draft" && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 print:hidden">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Missing fields
           </span>
