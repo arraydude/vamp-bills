@@ -384,7 +384,7 @@ export function BillPage({ bill }: BillPageProps) {
         </div>
 
         {bill && (
-          <aside className="w-full shrink-0 md:w-72">
+          <aside className="w-full shrink-0 print:hidden md:w-72">
             <BillActions bill={bill} />
           </aside>
         )}

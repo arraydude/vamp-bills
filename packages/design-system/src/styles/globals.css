@@ -155,4 +155,12 @@
   main {
     padding: 1rem !important;
   }
+
+  /* Hide select arrows, line item controls */
+  [data-slot="select-trigger"] svg,
+  [data-slot="select-icon"],
+  button[aria-label="Remove line item"],
+  [data-slot="field-separator"] {
+    display: none !important;
+  }
 }
