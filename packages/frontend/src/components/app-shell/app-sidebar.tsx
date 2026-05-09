@@ -105,7 +105,9 @@ export function AppSidebar() {
           <Button variant="ghost" size="icon-sm" onClick={toggleTheme}>
             {isDark ? <IconSun className="size-4" /> : <IconMoon className="size-4" />}
           </Button>
-          <Kbd>D</Kbd>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            Toggle theme <Kbd>D</Kbd>
+          </span>
         </div>
         <Separator />
         {session?.user && (
