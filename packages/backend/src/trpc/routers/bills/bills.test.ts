@@ -130,7 +130,8 @@ describe("bills router — authorization layer (FORBIDDEN)", () => {
     vi.mocked(db.select)
       .mockReturnValueOnce(mockChain([minimalBillRow]))
       .mockReturnValueOnce(mockChain([]))
-      .mockReturnValueOnce(mockChain([]));
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([{ name: "Approver" }]));
 
     const caller = createCaller(asUser("someone-else"));
     await expect(caller.archive({ id: "b_1" })).rejects.toMatchObject({
@@ -143,7 +144,8 @@ describe("bills router — authorization layer (FORBIDDEN)", () => {
     vi.mocked(db.select)
       .mockReturnValueOnce(mockChain([minimalBillRow]))
       .mockReturnValueOnce(mockChain([]))
-      .mockReturnValueOnce(mockChain([]));
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([{ name: "Approver" }]));
 
     // submit is a different creator-only path; covers the assertCreator
     // wiring on the SUBMIT lifecycle entry.
@@ -158,7 +160,8 @@ describe("bills router — authorization layer (FORBIDDEN)", () => {
     vi.mocked(db.select)
       .mockReturnValueOnce(mockChain([{ ...minimalBillRow, status: "awaiting_approval" }]))
       .mockReturnValueOnce(mockChain([]))
-      .mockReturnValueOnce(mockChain([]));
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([{ name: "Approver" }]));
 
     // Creator is "user-creator", approver is "user-approver". Calling as the
     // creator must be rejected: only the approver can approve.
@@ -173,7 +176,8 @@ describe("bills router — authorization layer (FORBIDDEN)", () => {
     vi.mocked(db.select)
       .mockReturnValueOnce(mockChain([{ ...minimalBillRow, status: "awaiting_approval" }]))
       .mockReturnValueOnce(mockChain([]))
-      .mockReturnValueOnce(mockChain([]));
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([{ name: "Approver" }]));
 
     // reject is a different approver-only path; covers the assertApprover
     // wiring on the REJECT lifecycle entry.
@@ -196,7 +200,8 @@ describe("bills router — state-machine wiring (BAD_REQUEST + missingPaths)", (
       .mockReturnValueOnce(
         mockChain([{ id: "li_1", billId: "b_1", description: "x", amount: "100.00", position: 0 }]),
       )
-      .mockReturnValueOnce(mockChain([]));
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([{ name: "Approver" }]));
 
     const caller = createCaller(asUser("user-creator"));
     try {
