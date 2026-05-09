@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { billLineItems, bills, payments, vendors } from "@vamp-bills/backend/db/app-schema.ts";
+import { user } from "@vamp-bills/backend/db/auth-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
 import type { BillEventType } from "@vamp-bills/backend/domain/bill/events.ts";
 import {
@@ -21,6 +22,7 @@ import {
   assertVendorExists,
   type BillRow,
   type Bundle,
+  fetchApproverName,
   type HydratedBill,
   hydrate,
   loadBundle,
@@ -105,9 +107,11 @@ export async function list({ input, ctx }: { input: ListInput | undefined; ctx: 
       approverId: bills.approverId,
       createdAt: bills.createdAt,
       updatedAt: bills.updatedAt,
+      approverName: user.name,
     })
     .from(bills)
     .leftJoin(vendors, eq(bills.vendorId, vendors.id))
+    .leftJoin(user, eq(bills.approverId, user.id))
     .where(where)
     .orderBy(desc(bills.createdAt));
 }
@@ -120,7 +124,7 @@ export async function getById({
   ctx: AuthedCtx;
 }): Promise<HydratedBill> {
   const bundle = await loadBundle(input.id);
-  return hydrate(bundle.bill, bundle.lineItems, bundle.payment, ctx.user.id);
+  return hydrate(bundle.bill, bundle.lineItems, bundle.payment, ctx.user.id, bundle.approverName);
 }
 
 export async function create({
@@ -153,7 +157,8 @@ export async function create({
       .returning();
     return { bill: billRow, lineItems: inserted };
   });
-  return hydrate(created.bill, created.lineItems, null, ctx.user.id);
+  const approverName = await fetchApproverName(billFields.approverId);
+  return hydrate(created.bill, created.lineItems, null, ctx.user.id, approverName);
 }
 
 export async function update({
@@ -192,7 +197,7 @@ export async function update({
   // id-only payloads at the input layer; this catches the deeper case where
   // every field is present but unchanged.
   if (!hasActualChange(bundle, patch, nextItems)) {
-    return hydrate(bundle.bill, bundle.lineItems, bundle.payment, ctx.user.id);
+    return hydrate(bundle.bill, bundle.lineItems, bundle.payment, ctx.user.id, bundle.approverName);
   }
 
   // Defense-in-depth readiness check on the merged shape: drafts may legally
@@ -256,7 +261,11 @@ export async function update({
     return { bill: billRow, lineItems: updatedItems };
   });
 
-  return hydrate(updated.bill, updated.lineItems, bundle.payment, ctx.user.id);
+  const approverName =
+    patch.approverId && patch.approverId !== bundle.bill.approverId
+      ? await fetchApproverName(patch.approverId)
+      : bundle.approverName;
+  return hydrate(updated.bill, updated.lineItems, bundle.payment, ctx.user.id, approverName);
 }
 
 // True iff the patch or nextItems actually differ from the loaded bundle.
@@ -384,6 +393,6 @@ export function lifecycle(
       return { bill: updatedBill, payment };
     });
 
-    return hydrate(result.bill, bundle.lineItems, result.payment, ctx.user.id);
+    return hydrate(result.bill, bundle.lineItems, result.payment, ctx.user.id, bundle.approverName);
   };
 }

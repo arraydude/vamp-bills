@@ -26,6 +26,7 @@ import { z } from "zod";
 
 import { useCreateBill, useUpdateBill } from "@/api/bills/mutations.ts";
 import type { HydratedBill } from "@/api/bills/queries.ts";
+import { useUsersList } from "@/api/users/queries.ts";
 import { useVendorsList } from "@/api/vendors/queries.ts";
 import { BillActions } from "@/components/bills/bill-actions.tsx";
 import { DatePickerField } from "@/components/bills/date-picker-field.tsx";
@@ -113,6 +114,7 @@ export function BillPage({ bill }: BillPageProps) {
   const editable = isNew || bill.bill.status === "draft" || bill.availableEvents.includes("EDIT");
 
   const { data: vendors = [] } = useVendorsList();
+  const { data: users = [] } = useUsersList();
 
   const createBill = useCreateBill({
     onSuccess: (data) => void navigate({ to: "/bills/$billId", params: { billId: data.bill.id } }),
@@ -204,24 +206,53 @@ export function BillPage({ bill }: BillPageProps) {
                   )}
                 </form.Field>
 
-                <form.Field name="invoiceNumber">
+                <form.Field name="approverId">
                   {(field) => (
                     <Field>
-                      <FieldLabel htmlFor={field.name}>Invoice number</FieldLabel>
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        placeholder="INV-001"
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                      <FieldLabel htmlFor={field.name}>Approver</FieldLabel>
+                      <Select
+                        value={field.state.value || null}
+                        onValueChange={(val) => field.handleChange((val as string) ?? "")}
+                        items={users.map((u) => ({ value: u.id, label: u.name }))}
                         disabled={!editable}
-                      />
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select an approver…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectLabel>Users</SelectLabel>
+                            {users.map((u) => (
+                              <SelectItem key={u.id} value={u.id}>
+                                {u.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                       <FieldError errors={mapErrors(field.state.meta.errors)} />
                     </Field>
                   )}
                 </form.Field>
               </div>
+
+              <form.Field name="invoiceNumber">
+                {(field) => (
+                  <Field>
+                    <FieldLabel htmlFor={field.name}>Invoice number</FieldLabel>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      placeholder="INV-001"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      disabled={!editable}
+                    />
+                    <FieldError errors={mapErrors(field.state.meta.errors)} />
+                  </Field>
+                )}
+              </form.Field>
 
               <form.Field name="description">
                 {(field) => (

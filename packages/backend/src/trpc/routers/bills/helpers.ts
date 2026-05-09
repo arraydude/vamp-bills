@@ -28,6 +28,7 @@ export type Bundle = {
   bill: BillRow;
   lineItems: BillLineItemRow[];
   payment: PaymentRow | null;
+  approverName: string | null;
 };
 
 // Single canonical contract for FE: every `getById` and lifecycle mutation
@@ -41,6 +42,7 @@ export type HydratedBill = {
   payment: PaymentRow | null;
   availableEvents: ReturnType<typeof availableEvents>;
   missingPaths: string[];
+  approverName: string | null;
 };
 
 // Auth helpers — load the bill first, then check. Can't run as middleware
@@ -84,6 +86,7 @@ export function hydrate(
   lineItems: BillLineItemRow[],
   payment: PaymentRow | null,
   userId: string,
+  approverName: string | null,
 ): HydratedBill {
   const ordered = [...lineItems].sort((a, b) => a.position - b.position);
   const derived = derivedReadiness({ ...bill, lineItems: ordered });
@@ -93,7 +96,17 @@ export function hydrate(
     payment,
     availableEvents: availableEvents(bill.status, derived, actorRoles(bill, userId)),
     missingPaths: missingPaths({ ...bill, lineItems: ordered }),
+    approverName,
   };
+}
+
+export async function fetchApproverName(approverId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ name: user.name })
+    .from(user)
+    .where(eq(user.id, approverId))
+    .limit(1);
+  return row?.name ?? null;
 }
 
 // Pre-flight FK existence checks. The bills table has notNull text FKs to
@@ -140,7 +153,8 @@ export async function loadBundle(billId: string): Promise<Bundle> {
     .where(eq(payments.billId, billId))
     .orderBy(desc(payments.createdAt))
     .limit(1);
-  return { bill, lineItems, payment: payment ?? null };
+  const approverName = await fetchApproverName(bill.approverId);
+  return { bill, lineItems, payment: payment ?? null, approverName };
 }
 
 // Maps attemptTransition's failure variants onto TRPCError. After the
