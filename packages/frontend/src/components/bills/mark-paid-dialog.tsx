@@ -11,20 +11,20 @@ import { Field, FieldLabel } from "@workspace/ui/components/field";
 import { Input } from "@workspace/ui/components/input";
 import { useState } from "react";
 
-import { useMarkBillPaid } from "@/api/bills/mutations.ts";
-
 type MarkPaidDialogProps = {
-  open: boolean;
   onOpenChange: (open: boolean) => void;
   billId: string;
+  markPaid: {
+    mutate: (input: { id: string; reference?: string }) => void;
+    isPending: boolean;
+  };
 };
 
-export function MarkPaidDialog({ open, onOpenChange, billId }: MarkPaidDialogProps) {
+export function MarkPaidDialog({ onOpenChange, billId, markPaid }: MarkPaidDialogProps) {
   const [reference, setReference] = useState("");
-  const markPaid = useMarkBillPaid({ onSuccess: () => onOpenChange(false) });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Mark as paid</DialogTitle>

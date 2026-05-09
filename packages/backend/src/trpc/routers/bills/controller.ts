@@ -75,7 +75,7 @@ export const billIdInputShape = z.object({ id: z.string().min(1) });
 export type BillIdInput = z.infer<typeof billIdInputShape>;
 
 export const markPaidInputShape = billIdInputShape.extend({
-  reference: z.string().optional(),
+  reference: z.string().trim().optional(),
 });
 export type MarkPaidInput = z.infer<typeof markPaidInputShape>;
 
@@ -327,7 +327,7 @@ export function insertPayment(reference?: string): LifecycleSideEffect {
         amount: bundle.bill.totalAmount,
         status: "paid",
         paidAt: new Date().toISOString(),
-        reference: reference ?? null,
+        reference: reference || null,
       })
       .returning();
     if (!row) {

@@ -8,6 +8,7 @@ import {
   useApproveBill,
   useArchiveBill,
   useCancelBillPayment,
+  useMarkBillPaid,
   useRejectBill,
   useSubmitBill,
 } from "@/api/bills/mutations.ts";
@@ -53,6 +54,7 @@ export function BillActions({ bill }: BillActionsProps) {
   const submit = useSubmitBill();
   const approve = useApproveBill();
   const reject = useRejectBill();
+  const markPaid = useMarkBillPaid({ onSuccess: () => setMarkPaidOpen(false) });
   const cancelPayment = useCancelBillPayment();
   const archive = useArchiveBill();
 
@@ -65,7 +67,7 @@ export function BillActions({ bill }: BillActionsProps) {
       archive,
     };
 
-  const anyPending = Object.values(mutations).some((m) => m.isPending);
+  const anyPending = Object.values(mutations).some((m) => m.isPending) || markPaid.isPending;
 
   const visibleEvents = bill.availableEvents.filter((e) => e !== "EDIT" && e in EVENT_TO_PROCEDURE);
   const showMarkPaid = bill.availableEvents.includes("MARK_PAID");
@@ -158,7 +160,9 @@ export function BillActions({ bill }: BillActionsProps) {
         </div>
       )}
 
-      {markPaidOpen && <MarkPaidDialog open onOpenChange={setMarkPaidOpen} billId={billId} />}
+      {markPaidOpen && (
+        <MarkPaidDialog onOpenChange={setMarkPaidOpen} billId={billId} markPaid={markPaid} />
+      )}
     </div>
   );
 }
