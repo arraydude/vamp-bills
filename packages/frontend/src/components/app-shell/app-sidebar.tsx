@@ -1,4 +1,4 @@
-import { IconFileInvoice, IconLogout, IconReceipt } from "@tabler/icons-react";
+import { IconFileInvoice, IconLogout, IconReceipt, IconUsers } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -15,7 +15,7 @@ import {
 import { useAuth } from "@/lib/use-auth.ts";
 
 type NavItem = {
-  to: "/bills";
+  to: "/bills" | "/vendors";
   label: string;
   icon: React.ReactNode;
   matchPrefix: string;
@@ -27,6 +27,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Bills",
     icon: <IconFileInvoice />,
     matchPrefix: "/bills",
+  },
+  {
+    to: "/vendors",
+    label: "Vendors",
+    icon: <IconUsers />,
+    matchPrefix: "/vendors",
   },
 ];
 

@@ -10,6 +10,7 @@ import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 
 const ROUTE_TITLES: Record<string, string> = {
   "/_app/bills": "Bills",
+  "/_app/vendors": "Vendors",
 };
 
 export function AppHeader() {

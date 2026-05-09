@@ -23,8 +23,3 @@ export function useBillById(id: string) {
   const trpc = useTRPC();
   return useQuery(trpc.bills.getById.queryOptions({ id }));
 }
-
-export function useVendorsList() {
-  const trpc = useTRPC();
-  return useQuery(trpc.vendors.list.queryOptions());
-}
