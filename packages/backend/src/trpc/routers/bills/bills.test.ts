@@ -188,6 +188,89 @@ describe("bills router — authorization layer (FORBIDDEN)", () => {
   });
 });
 
+describe("bills router — markPaid reference", () => {
+  test("markPaid passes reference through to the payment insert", async () => {
+    const { db } = await import("@vamp-bills/backend/db/client.ts");
+    const approvedBill = { ...minimalBillRow, status: "approved" as const };
+
+    // loadBundle: bill, lineItems, payment, approverName
+    vi.mocked(db.select)
+      .mockReturnValueOnce(mockChain([approvedBill]))
+      .mockReturnValueOnce(
+        mockChain([{ id: "li_1", billId: "b_1", description: "x", amount: "100.00", position: 0 }]),
+      )
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([{ name: "Approver" }]));
+
+    const paidBill = { ...approvedBill, status: "paid" as const };
+    const paymentRow = {
+      id: "pay_1",
+      billId: "b_1",
+      amount: "100.00",
+      status: "paid" as const,
+      paymentMethod: "manual_off_platform" as const,
+      paidAt: "2026-05-09",
+      reference: "Wire ref 12345",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    vi.mocked(db.transaction).mockImplementation(async (fn) => {
+      const fakeTx = {
+        update: () => mockChain([paidBill]),
+        insert: () => mockChain([paymentRow]),
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock transaction proxy
+      return fn(fakeTx as any);
+    });
+
+    const caller = createCaller(asUser("user-creator"));
+    const result = await caller.markPaid({ id: "b_1", reference: "Wire ref 12345" });
+    expect(result.bill.status).toBe("paid");
+    expect(result.payment?.reference).toBe("Wire ref 12345");
+  });
+
+  test("markPaid without reference stores null", async () => {
+    const { db } = await import("@vamp-bills/backend/db/client.ts");
+    const approvedBill = { ...minimalBillRow, status: "approved" as const };
+
+    vi.mocked(db.select)
+      .mockReturnValueOnce(mockChain([approvedBill]))
+      .mockReturnValueOnce(
+        mockChain([{ id: "li_1", billId: "b_1", description: "x", amount: "100.00", position: 0 }]),
+      )
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([{ name: "Approver" }]));
+
+    const paidBill = { ...approvedBill, status: "paid" as const };
+    const paymentRow = {
+      id: "pay_2",
+      billId: "b_1",
+      amount: "100.00",
+      status: "paid" as const,
+      paymentMethod: "manual_off_platform" as const,
+      paidAt: "2026-05-09",
+      reference: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    vi.mocked(db.transaction).mockImplementation(async (fn) => {
+      const fakeTx = {
+        update: () => mockChain([paidBill]),
+        insert: () => mockChain([paymentRow]),
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock transaction proxy
+      return fn(fakeTx as any);
+    });
+
+    const caller = createCaller(asUser("user-creator"));
+    const result = await caller.markPaid({ id: "b_1" });
+    expect(result.bill.status).toBe("paid");
+    expect(result.payment?.reference).toBeNull();
+  });
+});
+
 describe("bills router — state-machine wiring (BAD_REQUEST + missingPaths)", () => {
   test("submit on a bill missing required fields surfaces missingPaths via GuardFailedError", async () => {
     const { db } = await import("@vamp-bills/backend/db/client.ts");
