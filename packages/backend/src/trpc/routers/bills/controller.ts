@@ -74,6 +74,11 @@ export const updateInputShape = insertBillSchema
 export const billIdInputShape = z.object({ id: z.string().min(1) });
 export type BillIdInput = z.infer<typeof billIdInputShape>;
 
+export const markPaidInputShape = billIdInputShape.extend({
+  reference: z.string().trim().optional(),
+});
+export type MarkPaidInput = z.infer<typeof markPaidInputShape>;
+
 // ─── non-lifecycle handlers ────────────────────────────────────────────────
 
 export async function list({ input, ctx }: { input: ListInput | undefined; ctx: AuthedCtx }) {
@@ -313,8 +318,8 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type LifecycleSideEffect = (tx: Tx, bundle: Bundle) => Promise<PaymentRow | null>;
 
-export const sideEffects = {
-  insertPayment: async (tx, bundle) => {
+export function insertPayment(reference?: string): LifecycleSideEffect {
+  return async (tx, bundle) => {
     const [row] = await tx
       .insert(payments)
       .values({
@@ -322,6 +327,7 @@ export const sideEffects = {
         amount: bundle.bill.totalAmount,
         status: "paid",
         paidAt: new Date().toISOString(),
+        reference: reference || null,
       })
       .returning();
     if (!row) {
@@ -331,7 +337,10 @@ export const sideEffects = {
       });
     }
     return row;
-  },
+  };
+}
+
+export const sideEffects = {
   cancelLatestPayment: async (tx, bundle) => {
     if (!bundle.payment) {
       throw new TRPCError({
@@ -395,4 +404,45 @@ export function lifecycle(
 
     return hydrate(result.bill, bundle.lineItems, result.payment, ctx.user.id, bundle.approverName);
   };
+}
+
+export async function markPaid({
+  input,
+  ctx,
+}: {
+  input: MarkPaidInput;
+  ctx: AuthedCtx;
+}): Promise<HydratedBill> {
+  const bundle = await loadBundle(input.id);
+  assertCreator(bundle.bill, ctx.user.id);
+  const nextStatus = transitionOrThrow(bundle.bill.status, { type: "MARK_PAID" }, bundle);
+
+  const result = await db.transaction(async (tx) => {
+    let updatedBill: BillRow = bundle.bill;
+    let payment = bundle.payment;
+    if (nextStatus !== bundle.bill.status) {
+      const [row] = await tx
+        .update(bills)
+        .set({ status: nextStatus })
+        .where(
+          and(
+            eq(bills.id, input.id),
+            eq(bills.status, bundle.bill.status),
+            eq(bills.updatedAt, bundle.bill.updatedAt),
+          ),
+        )
+        .returning();
+      if (!row) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "bill state changed; reload and retry",
+        });
+      }
+      updatedBill = row;
+      payment = await insertPayment(input.reference)(tx, bundle);
+    }
+    return { bill: updatedBill, payment };
+  });
+
+  return hydrate(result.bill, bundle.lineItems, result.payment, ctx.user.id, bundle.approverName);
 }

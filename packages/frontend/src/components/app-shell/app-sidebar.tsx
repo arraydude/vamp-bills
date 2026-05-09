@@ -1,6 +1,8 @@
-import { IconFileInvoice, IconLogout, IconReceipt, IconUsers } from "@tabler/icons-react";
+import { IconFileInvoice, IconMoon, IconReceipt, IconSun, IconUsers } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Button } from "@workspace/ui/components/button";
+import { DropdownMenuItem } from "@workspace/ui/components/dropdown-menu";
+import { Kbd } from "@workspace/ui/components/kbd";
+import { NavUser } from "@workspace/ui/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +14,7 @@ import {
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar";
 
+import { useTheme } from "@/components/theme-provider.tsx";
 import { useAuth } from "@/lib/use-auth.ts";
 
 type NavItem = {
@@ -38,11 +41,10 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { signOut, isTransitioning } = useAuth();
+  const { signOut, session } = useAuth();
+  const { theme, setTheme } = useTheme();
 
-  const handleSignOut = () => {
-    void signOut();
-  };
+  const isDark = theme === "dark";
 
   return (
     <Sidebar variant="inset">
@@ -50,12 +52,14 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link to="/bills" />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <IconReceipt className="size-4" />
+              <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <IconReceipt className="size-6" />
               </div>
               <div className="grid flex-1 text-start text-sm leading-tight">
                 <span className="truncate font-medium">vamp-bills</span>
-                <span className="text-muted-foreground truncate text-xs">Accounts payable</span>
+                <span className="text-muted-foreground truncate text-xs">
+                  Manage bills, vendors, and payments
+                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -80,10 +84,21 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <Button variant="ghost" size="sm" onClick={handleSignOut} disabled={isTransitioning}>
-          <IconLogout />
-          {isTransitioning ? "Signing out..." : "Sign out"}
-        </Button>
+        {session && (
+          <NavUser
+            user={{
+              name: session.user.name,
+              email: session.user.email,
+            }}
+            onSignOut={() => void signOut()}
+          >
+            <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
+              {isDark ? <IconSun className="size-4" /> : <IconMoon className="size-4" />}
+              <span className="flex-1">Toggle theme</span>
+              <Kbd>D</Kbd>
+            </DropdownMenuItem>
+          </NavUser>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

@@ -1,6 +1,8 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { format } from "date-fns";
+import { useState } from "react";
 
 import {
   useApproveBill,
@@ -11,6 +13,7 @@ import {
   useSubmitBill,
 } from "@/api/bills/mutations.ts";
 import type { HydratedBill } from "@/api/bills/queries.ts";
+import { MarkPaidDialog } from "@/components/bills/mark-paid-dialog.tsx";
 import { StatusBadge } from "@/components/bills/status-badge.tsx";
 
 type BillActionsProps = {
@@ -39,7 +42,6 @@ const EVENT_TO_PROCEDURE: Record<string, string> = {
   SUBMIT: "submit",
   APPROVE: "approve",
   REJECT: "reject",
-  MARK_PAID: "markPaid",
   CANCEL_PAYMENT: "cancelPayment",
   ARCHIVE: "archive",
 };
@@ -47,10 +49,12 @@ const EVENT_TO_PROCEDURE: Record<string, string> = {
 export function BillActions({ bill }: BillActionsProps) {
   const billId = bill.bill.id;
   const isSelfApproved = bill.bill.approverId === bill.bill.createdBy;
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+
   const submit = useSubmitBill();
   const approve = useApproveBill();
   const reject = useRejectBill();
-  const markPaid = useMarkBillPaid();
+  const markPaid = useMarkBillPaid({ onSuccess: () => setMarkPaidOpen(false) });
   const cancelPayment = useCancelBillPayment();
   const archive = useArchiveBill();
 
@@ -59,14 +63,14 @@ export function BillActions({ bill }: BillActionsProps) {
       submit,
       approve,
       reject,
-      markPaid,
       cancelPayment,
       archive,
     };
 
-  const anyPending = Object.values(mutations).some((m) => m.isPending);
+  const anyPending = Object.values(mutations).some((m) => m.isPending) || markPaid.isPending;
 
   const visibleEvents = bill.availableEvents.filter((e) => e !== "EDIT" && e in EVENT_TO_PROCEDURE);
+  const showMarkPaid = bill.availableEvents.includes("MARK_PAID");
 
   return (
     <div className="flex flex-col gap-4">
@@ -90,11 +94,38 @@ export function BillActions({ bill }: BillActionsProps) {
         )}
       </div>
 
-      {visibleEvents.length > 0 && (
+      {bill.payment && bill.payment.status === "paid" && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Payment
+          </span>
+          <div className="flex flex-col gap-1 text-sm">
+            {bill.payment.paidAt && (
+              <span>Paid on {format(new Date(bill.payment.paidAt), "MMM d, yyyy")}</span>
+            )}
+            {bill.payment.reference && (
+              <span className="text-muted-foreground">{bill.payment.reference}</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {(visibleEvents.length > 0 || showMarkPaid) && (
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Actions
           </span>
+          {showMarkPaid && (
+            <Button
+              variant="default"
+              size="sm"
+              className="w-full justify-start"
+              disabled={anyPending}
+              onClick={() => setMarkPaidOpen(true)}
+            >
+              Mark as paid
+            </Button>
+          )}
           {visibleEvents.map((event) => {
             const procedure = EVENT_TO_PROCEDURE[event];
             if (!procedure) return null;
@@ -127,6 +158,10 @@ export function BillActions({ bill }: BillActionsProps) {
             ))}
           </ul>
         </div>
+      )}
+
+      {markPaidOpen && (
+        <MarkPaidDialog onOpenChange={setMarkPaidOpen} billId={billId} markPaid={markPaid} />
       )}
     </div>
   );

@@ -56,7 +56,7 @@ export function useUpdateBill(opts?: MutationCallbacks) {
 }
 
 function useLifecycleMutation(
-  procedure: "submit" | "approve" | "reject" | "markPaid" | "cancelPayment" | "archive",
+  procedure: "submit" | "approve" | "reject" | "cancelPayment" | "archive",
   successMessage: string,
   opts?: MutationCallbacks,
 ) {
@@ -88,7 +88,19 @@ export function useRejectBill(opts?: MutationCallbacks) {
 }
 
 export function useMarkBillPaid(opts?: MutationCallbacks) {
-  return useLifecycleMutation("markPaid", "Bill marked as paid", opts);
+  const trpc = useTRPC();
+  const updateCache = useBillCacheUpdater();
+
+  return useMutation(
+    trpc.bills.markPaid.mutationOptions({
+      onSuccess: (data) => {
+        updateCache(data);
+        toast.success("Bill marked as paid");
+        opts?.onSuccess?.(data);
+      },
+      onError: (error) => opts?.onError?.(error),
+    }),
+  );
 }
 
 export function useCancelBillPayment(opts?: MutationCallbacks) {

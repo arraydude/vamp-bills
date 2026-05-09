@@ -21,9 +21,7 @@ export const billsRouter = router({
   reject: protectedProcedure
     .input(controller.billIdInputShape)
     .mutation(controller.lifecycle("REJECT", "approver")),
-  markPaid: protectedProcedure
-    .input(controller.billIdInputShape)
-    .mutation(controller.lifecycle("MARK_PAID", "creator", controller.sideEffects.insertPayment)),
+  markPaid: protectedProcedure.input(controller.markPaidInputShape).mutation(controller.markPaid),
   cancelPayment: protectedProcedure
     .input(controller.billIdInputShape)
     .mutation(
