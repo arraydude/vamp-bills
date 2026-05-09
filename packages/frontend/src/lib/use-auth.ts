@@ -48,6 +48,25 @@ export function useAuth() {
     });
   };
 
+  const signUp = async (input: {
+    email: string;
+    password: string;
+    name: string;
+  }): Promise<{ ok: boolean }> => {
+    setError(null);
+    setIntent("sign-in");
+    const { error: signUpError } = await authClient.signUp.email(input);
+    if (signUpError) {
+      setError(signUpError.message ?? "Sign up failed");
+      setIntent(null);
+      return { ok: false };
+    }
+    await new Promise<void>((resolve) => {
+      resolveRef.current = resolve;
+    });
+    return { ok: true };
+  };
+
   const signInWithGoogle = (opts: { callbackURL?: string } = {}) =>
     authClient.signIn.social({ provider: "google", ...opts });
 
@@ -57,6 +76,7 @@ export function useAuth() {
     isTransitioning: intent !== null,
     error,
     signIn,
+    signUp,
     signOut,
     signInWithGoogle,
   };

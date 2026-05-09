@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { createRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import {
   Card,
@@ -22,11 +22,17 @@ function sanitizeRedirect(value: string | undefined): string {
 
 const loginSearchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
+  mode: z.enum(["login", "signup"]).optional().catch(undefined),
 });
 
 const loginFormSchema = z.object({
+  name: z.string(),
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
   password: z.string().min(1, "Password is required"),
+});
+
+const signupFormSchema = loginFormSchema.extend({
+  name: z.string().min(1, "Name is required"),
 });
 
 export const loginRoute = createRoute({
@@ -43,17 +49,23 @@ export const loginRoute = createRoute({
 });
 
 function LoginPage() {
-  const { redirect: redirectParam } = loginRoute.useSearch();
+  const { redirect: redirectParam, mode } = loginRoute.useSearch();
   const navigate = useNavigate();
-  const { signIn, signInWithGoogle, isTransitioning, error: authError } = useAuth();
+  const { signIn, signUp, signInWithGoogle, isTransitioning, error: authError } = useAuth();
   const target = sanitizeRedirect(redirectParam);
+  const isSignup = mode === "signup";
 
   const form = useForm({
-    defaultValues: { email: "", password: "" },
-    validators: { onSubmit: loginFormSchema },
+    defaultValues: { name: "", email: "", password: "" },
+    validators: { onSubmit: isSignup ? signupFormSchema : loginFormSchema },
     onSubmit: async ({ value }) => {
-      const { ok } = await signIn(value);
-      if (ok) navigate({ to: target });
+      if (isSignup) {
+        const { ok } = await signUp(value);
+        if (ok) navigate({ to: target });
+      } else {
+        const { ok } = await signIn(value);
+        if (ok) navigate({ to: target });
+      }
     },
   });
 
@@ -62,8 +74,12 @@ function LoginPage() {
       <div className="flex w-full max-w-sm flex-col gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Login to your account</CardTitle>
-            <CardDescription>Enter your email below to login to your account</CardDescription>
+            <CardTitle>{isSignup ? "Create an account" : "Login to your account"}</CardTitle>
+            <CardDescription>
+              {isSignup
+                ? "Enter your details below to create your account"
+                : "Enter your email below to login to your account"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form
@@ -75,6 +91,29 @@ function LoginPage() {
             >
               <FieldGroup>
                 {authError && <FieldError>{authError}</FieldError>}
+
+                {isSignup && (
+                  <form.Field name="name">
+                    {(field) => (
+                      <Field>
+                        <FieldLabel htmlFor={field.name}>Name</FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          placeholder="John Doe"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                        />
+                        <FieldError
+                          errors={field.state.meta.errors.map((err) =>
+                            typeof err === "string" ? { message: err } : (err ?? undefined),
+                          )}
+                        />
+                      </Field>
+                    )}
+                  </form.Field>
+                )}
 
                 <form.Field name="email">
                   {(field) => (
@@ -121,7 +160,13 @@ function LoginPage() {
 
                 <Field>
                   <Button type="submit" disabled={isTransitioning}>
-                    {isTransitioning ? "Signing in..." : "Login"}
+                    {isTransitioning
+                      ? isSignup
+                        ? "Creating account..."
+                        : "Signing in..."
+                      : isSignup
+                        ? "Create account"
+                        : "Login"}
                   </Button>
                   <Button
                     variant="outline"
@@ -129,9 +174,35 @@ function LoginPage() {
                     disabled={isTransitioning}
                     onClick={() => signInWithGoogle({ callbackURL: target })}
                   >
-                    Login with Google
+                    {isSignup ? "Sign up with Google" : "Login with Google"}
                   </Button>
                 </Field>
+
+                <p className="text-center text-sm text-muted-foreground">
+                  {isSignup ? (
+                    <>
+                      Already have an account?{" "}
+                      <Link
+                        to="/login"
+                        search={{ redirect: redirectParam }}
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        Log in
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      Don&apos;t have an account?{" "}
+                      <Link
+                        to="/login"
+                        search={{ redirect: redirectParam, mode: "signup" }}
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        Sign up
+                      </Link>
+                    </>
+                  )}
+                </p>
               </FieldGroup>
             </form>
           </CardContent>
