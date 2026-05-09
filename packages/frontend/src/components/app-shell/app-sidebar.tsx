@@ -7,6 +7,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 import { Button } from "@workspace/ui/components/button";
 import { Kbd } from "@workspace/ui/components/kbd";
 import { Separator } from "@workspace/ui/components/separator";
@@ -111,11 +112,23 @@ export function AppSidebar() {
         </div>
         <Separator />
         {session?.user && (
-          <div className="flex flex-col gap-0.5 px-1 py-1">
-            <span className="truncate text-sm font-medium">{session.user.name as string}</span>
-            <span className="truncate text-xs text-muted-foreground">
-              {session.user.email as string}
-            </span>
+          <div className="flex items-center gap-2 px-1 py-1">
+            <Avatar className="size-7">
+              <AvatarFallback className="text-xs">
+                {(session.user.name as string)
+                  .split(" ")
+                  .map((w) => w[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-medium">{session.user.name as string}</span>
+              <span className="truncate text-xs text-muted-foreground">
+                {session.user.email as string}
+              </span>
+            </div>
           </div>
         )}
         <Button variant="ghost" size="sm" onClick={handleSignOut} disabled={isTransitioning}>
