@@ -1,9 +1,9 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 
-import { rootRoute } from "@/routes/root.tsx";
+import { appLayoutProtectedRoute } from "@/routes/_app.tsx";
 
 export const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appLayoutProtectedRoute,
   path: "/",
   beforeLoad: () => {
     throw redirect({ to: "/bills" });
