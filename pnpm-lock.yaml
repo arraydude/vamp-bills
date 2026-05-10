@@ -10,10 +10,6 @@ overrides:
 importers:
 
   .:
-    dependencies:
-      csv-parse:
-        specifier: ^6.2.1
-        version: 6.2.1
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.14
