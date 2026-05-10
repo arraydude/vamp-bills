@@ -1,13 +1,13 @@
 import type { BillStatus } from "@vamp-bills/backend/domain/bill/status.ts";
-import { Badge } from "@workspace/ui/components/badge";
+import { Badge, type badgeVariants } from "@workspace/ui/components/badge";
+import type { VariantProps } from "class-variance-authority";
 
-const STATUS_VARIANT: Record<
-  BillStatus,
-  "default" | "secondary" | "destructive" | "outline" | "ghost"
-> = {
+type StatusVariant = VariantProps<typeof badgeVariants>["variant"];
+
+const STATUS_VARIANT: Record<BillStatus, StatusVariant> = {
   draft: "outline",
   awaiting_approval: "secondary",
-  approved: "default",
+  approved: "secondary",
   rejected: "destructive",
   paid: "secondary",
   archived: "ghost",

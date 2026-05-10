@@ -82,8 +82,6 @@ export function BillActions({ bill }: BillActionsProps) {
         <StatusBadge status={bill.bill.status} />
       </div>
 
-      <Separator />
-
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Approver
@@ -99,7 +97,6 @@ export function BillActions({ bill }: BillActionsProps) {
 
       {bill.payment && bill.payment.status === "paid" && (
         <>
-          <Separator />
           <div className="flex flex-col gap-2">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Payment
@@ -119,6 +116,9 @@ export function BillActions({ bill }: BillActionsProps) {
       <Separator className="print:hidden" />
 
       <div className="flex flex-col gap-2 print:hidden">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Actions
+        </span>
         <Button
           variant="outline"
           size="sm"
