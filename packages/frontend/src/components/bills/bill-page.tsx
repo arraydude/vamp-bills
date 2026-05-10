@@ -1,5 +1,5 @@
 import { IconArrowLeft } from "@tabler/icons-react";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -149,6 +149,7 @@ export function BillPage({ bill }: BillPageProps) {
   }, [form, userId]);
 
   const isPending = createBill.isPending || updateBill.isPending;
+  const totalAmount = useStore(form.store, (s) => computeTotal(s.values.lineItems));
 
   if (listsLoading) return <BillPageSkeleton />;
 
@@ -307,7 +308,7 @@ export function BillPage({ bill }: BillPageProps) {
                 {(arrayField) => (
                   <LineItemsField
                     items={arrayField.state.value}
-                    formStore={form.store}
+                    totalAmount={totalAmount}
                     disabled={!editable}
                     arrayErrors={mapErrors(arrayField.state.meta.errors)}
                     onAdd={() =>
