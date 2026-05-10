@@ -1,4 +1,6 @@
 import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useStore } from "@tanstack/react-form";
+import type { ReadonlyStore } from "@tanstack/store";
 import { Button } from "@workspace/ui/components/button";
 import { FieldError, FieldSeparator } from "@workspace/ui/components/field";
 import { Item, ItemContent, ItemGroup } from "@workspace/ui/components/item";
@@ -13,8 +15,13 @@ export type LineItem = {
 
 type FieldErrors = Array<{ message?: string } | undefined>;
 
+type FormStoreWithLineItems = ReadonlyStore<{
+  values: { lineItems: LineItem[] };
+}>;
+
 type LineItemsFieldProps = {
   items: LineItem[];
+  formStore: FormStoreWithLineItems;
   disabled?: boolean;
   arrayErrors?: FieldErrors;
   onAdd: () => void;
@@ -35,13 +42,16 @@ function generateKey(): number {
 
 export function LineItemsField({
   items,
+  formStore,
   disabled,
   arrayErrors,
   onAdd,
   onRemove,
   renderItemFields,
 }: LineItemsFieldProps) {
-  const totalCents = items.reduce((acc, li) => acc + toCents(li.amount), 0);
+  const totalCents = useStore(formStore, (s) =>
+    s.values.lineItems.reduce((acc: number, li: LineItem) => acc + toCents(li.amount), 0),
+  );
 
   const [keys, setKeys] = useState(() => items.map(() => generateKey()));
 

@@ -148,10 +148,6 @@ export function BillPage({ bill }: BillPageProps) {
     }
   }, [form, userId]);
 
-  useEffect(() => {
-    form.setFieldValue("totalAmount", computeTotal(form.state.values.lineItems));
-  }, [form, form.state.values.lineItems]);
-
   const isPending = createBill.isPending || updateBill.isPending;
 
   if (listsLoading) return <BillPageSkeleton />;
@@ -311,6 +307,7 @@ export function BillPage({ bill }: BillPageProps) {
                 {(arrayField) => (
                   <LineItemsField
                     items={arrayField.state.value}
+                    formStore={form.store}
                     disabled={!editable}
                     arrayErrors={mapErrors(arrayField.state.meta.errors)}
                     onAdd={() =>
