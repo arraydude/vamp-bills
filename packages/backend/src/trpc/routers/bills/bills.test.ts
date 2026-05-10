@@ -106,6 +106,28 @@ describe("bills router — auth gate (UNAUTHORIZED)", () => {
     ["list", () => createCaller(noUserCtx()).list()],
     ["getById", () => createCaller(noUserCtx()).getById({ id: "b_1" })],
     ["create", () => createCaller(noUserCtx()).create(validCreateInput)],
+    [
+      "createBulk",
+      () =>
+        createCaller(noUserCtx()).createBulk({
+          rows: [
+            {
+              vendor: "V",
+              invoiceNumber: "I",
+              description: "D",
+              amount: "1.00",
+              invoiceDate: "2026-01-01",
+            },
+          ],
+        }),
+    ],
+    [
+      "importCsv",
+      () =>
+        createCaller(noUserCtx()).importCsv({
+          csv: "vendor,invoice_number,description,amount,invoice_date\nV,I,D,1.00,2026-01-01",
+        }),
+    ],
     ["update", () => createCaller(noUserCtx()).update({ id: "b_1", description: "changed" })],
     ["submit", () => createCaller(noUserCtx()).submit({ id: "b_1" })],
     ["approve", () => createCaller(noUserCtx()).approve({ id: "b_1" })],

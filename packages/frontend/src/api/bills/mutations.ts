@@ -110,3 +110,22 @@ export function useCancelBillPayment(opts?: MutationCallbacks) {
 export function useArchiveBill(opts?: MutationCallbacks) {
   return useLifecycleMutation("archive", "Bill archived", opts);
 }
+
+type ImportCsvResult = RouterOutputs["bills"]["importCsv"];
+
+export function useImportCsv(opts?: MutationCallbacks<ImportCsvResult>) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  return useMutation(
+    trpc.bills.importCsv.mutationOptions({
+      onSuccess: (data) => {
+        void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
+        void queryClient.invalidateQueries({ queryKey: trpc.vendors.list.queryKey() });
+        toast.success(`${data.created} bill(s) created`);
+        opts?.onSuccess?.(data);
+      },
+      onError: (error) => opts?.onError?.(error),
+    }),
+  );
+}

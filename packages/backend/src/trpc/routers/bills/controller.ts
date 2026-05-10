@@ -74,6 +74,29 @@ export const updateInputShape = insertBillSchema
 export const billIdInputShape = z.object({ id: z.string().min(1) });
 export type BillIdInput = z.infer<typeof billIdInputShape>;
 
+const csvRowSchema = z.object({
+  vendor: z.string().trim().min(1, "vendor name is required"),
+  invoiceNumber: z.string().trim().min(1, "invoice number is required"),
+  description: z.string().trim().min(1, "description is required"),
+  amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "must be a valid decimal"),
+  invoiceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "must be YYYY-MM-DD"),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+export type CsvRow = z.infer<typeof csvRowSchema>;
+
+export const createBulkInputShape = z.object({
+  rows: z.array(csvRowSchema).min(1, "at least one row is required").max(500),
+});
+export type CreateBulkInput = z.infer<typeof createBulkInputShape>;
+
+export const importCsvInputShape = z.object({
+  csv: z.string().min(1, "CSV content is required"),
+});
+export type ImportCsvInput = z.infer<typeof importCsvInputShape>;
+
 export const markPaidInputShape = billIdInputShape.extend({
   reference: z.string().trim().optional(),
 });
@@ -164,6 +187,130 @@ export async function create({
   });
   const approverName = await fetchApproverName(billFields.approverId);
   return hydrate(created.bill, created.lineItems, null, ctx.user.id, approverName);
+}
+
+function vendorSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+export async function createBulk({
+  input,
+  ctx,
+}: {
+  input: CreateBulkInput;
+  ctx: AuthedCtx;
+}): Promise<{ created: number; vendorsCreated: string[] }> {
+  const existing = await db.select({ id: vendors.id, name: vendors.name }).from(vendors);
+  const vendorMap = new Map(existing.map((v) => [v.name.toLowerCase(), v.id]));
+
+  const newVendorNames = [
+    ...new Set(
+      input.rows.map((r) => r.vendor).filter((name) => !vendorMap.has(name.toLowerCase())),
+    ),
+  ];
+
+  if (newVendorNames.length > 0) {
+    const created = await db
+      .insert(vendors)
+      .values(
+        newVendorNames.map((name) => ({
+          name,
+          email: `${vendorSlug(name) || "vendor"}@example.com`,
+        })),
+      )
+      .returning();
+    for (const v of created) {
+      vendorMap.set(v.name.toLowerCase(), v.id);
+    }
+  }
+
+  let billCount = 0;
+  await db.transaction(async (tx) => {
+    for (const row of input.rows) {
+      const vendorId = vendorMap.get(row.vendor.toLowerCase());
+      if (!vendorId) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `vendor "${row.vendor}" not resolved`,
+        });
+      }
+      const [billRow] = await tx
+        .insert(bills)
+        .values({
+          vendorId,
+          approverId: ctx.user.id,
+          invoiceNumber: row.invoiceNumber,
+          description: row.description,
+          totalAmount: row.amount,
+          currency: "USD",
+          invoiceDate: row.invoiceDate,
+          dueDate: row.dueDate ?? null,
+          createdBy: ctx.user.id,
+        })
+        .returning();
+      if (!billRow) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "bill insert returned no row",
+        });
+      }
+      await tx.insert(billLineItems).values({
+        billId: billRow.id,
+        description: row.description,
+        amount: row.amount,
+        position: 0,
+      });
+      billCount++;
+    }
+  });
+
+  return { created: billCount, vendorsCreated: newVendorNames };
+}
+
+export async function importCsv({
+  input,
+  ctx,
+}: {
+  input: ImportCsvInput;
+  ctx: AuthedCtx;
+}): Promise<{ created: number; vendorsCreated: string[] }> {
+  const { parse } = await import("csv-parse/sync");
+  const records = parse(input.csv, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  }) as Record<string, string>[];
+
+  if (records.length === 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "CSV contains no data rows" });
+  }
+  if (records.length > 500) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "CSV exceeds 500 row limit" });
+  }
+
+  const rows = records.map((r, i) => {
+    const result = csvRowSchema.safeParse({
+      vendor: r.vendor ?? "",
+      invoiceNumber: r.invoice_number ?? "",
+      description: r.description ?? "",
+      amount: r.amount ?? "",
+      invoiceDate: r.invoice_date ?? "",
+      dueDate: r.due_date || undefined,
+    });
+    if (!result.success) {
+      const issues = result.error.issues.map((iss) => iss.message).join("; ");
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Row ${i + 2}: ${issues}`,
+      });
+    }
+    return result.data;
+  });
+
+  return createBulk({ input: { rows }, ctx });
 }
 
 export async function update({
