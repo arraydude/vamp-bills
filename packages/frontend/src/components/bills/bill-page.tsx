@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
-import { Spinner } from "@workspace/ui/components/spinner";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { format } from "date-fns";
 import { useEffect } from "react";
@@ -30,6 +29,7 @@ import type { HydratedBill } from "@/api/bills/queries.ts";
 import { useUsersList } from "@/api/users/queries.ts";
 import { useVendorsList } from "@/api/vendors/queries.ts";
 import { BillActions } from "@/components/bills/bill-actions.tsx";
+import { BillPageSkeleton } from "@/components/bills/bill-page-skeleton.tsx";
 import { DatePickerField } from "@/components/bills/date-picker-field.tsx";
 import { LineItemsField } from "@/components/bills/line-items-field.tsx";
 import { authClient } from "@/lib/auth-client.ts";
@@ -154,13 +154,7 @@ export function BillPage({ bill }: BillPageProps) {
 
   const isPending = createBill.isPending || updateBill.isPending;
 
-  if (listsLoading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Spinner className="size-6" />
-      </div>
-    );
-  }
+  if (listsLoading) return <BillPageSkeleton />;
 
   return (
     <div className="flex flex-col gap-6">
