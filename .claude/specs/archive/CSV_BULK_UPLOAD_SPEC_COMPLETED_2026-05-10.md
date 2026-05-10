@@ -32,8 +32,8 @@ The MVP scope (`docs/mvp-scope.md`, lines 30–36) defines three bill intake met
 |---|---|---|
 | Row-to-bill mapping | One row = one bill with one line item | Simplest model; covers the demo use case |
 | Vendor resolution | Match by name (case-insensitive), auto-create if not found | No friction — user doesn't need to pre-create vendors |
-| Auto-created vendor email | `billing@<slug>.example` placeholder | Satisfies the required `email` field in vendor schema without user input |
-| CSV parsing | Client-side (no file upload to server) | Structured JSON sent to tRPC; avoids multipart handling |
+| Auto-created vendor email | `<slug>@example.com` placeholder | Satisfies the required `email` field in vendor schema without user input |
+| CSV parsing | Server-side (`csv-parse` with `bom: true`) | Single source of truth; `dryRun` flag for preview without inserting |
 | Approver | Defaults to current user | Same as manual bill creation |
 | Error handling | All-or-nothing transaction | Partial imports create confusion; rollback on any failure |
 | Row limit | 500 max | Prevents unbounded inserts in a single transaction |
