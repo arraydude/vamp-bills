@@ -1,14 +1,8 @@
-import { IconArrowDown, IconArrowUp, IconSelector } from "@tabler/icons-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { SortIcon } from "@workspace/ui/components/sort-icon";
 import { format, parseISO } from "date-fns";
 
 import type { VendorListItem } from "@/api/vendors/queries.ts";
-
-function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  if (sorted === "asc") return <IconArrowUp className="size-3.5" />;
-  if (sorted === "desc") return <IconArrowDown className="size-3.5" />;
-  return <IconSelector className="size-3.5 opacity-40" />;
-}
 
 export const columns: ColumnDef<VendorListItem, unknown>[] = [
   {

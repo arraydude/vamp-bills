@@ -1,24 +1,10 @@
-import { IconArrowDown, IconArrowUp, IconSelector } from "@tabler/icons-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
+import { SortIcon } from "@workspace/ui/components/sort-icon";
+import { getInitials } from "@workspace/ui/lib/format";
 import { format, parseISO } from "date-fns";
 
 import type { UserListItem } from "@/api/users/queries.ts";
-
-function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  if (sorted === "asc") return <IconArrowUp className="size-3.5" />;
-  if (sorted === "desc") return <IconArrowDown className="size-3.5" />;
-  return <IconSelector className="size-3.5 opacity-40" />;
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export const columns: ColumnDef<UserListItem, unknown>[] = [
   {
