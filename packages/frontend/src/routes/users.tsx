@@ -1,3 +1,5 @@
+"use no memo";
+
 import { IconSearch } from "@tabler/icons-react";
 import { createRoute, Outlet } from "@tanstack/react-router";
 import {
