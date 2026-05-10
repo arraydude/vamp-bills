@@ -49,7 +49,7 @@ export function LineItemsField({
 
       <ItemGroup>
         {items.map((item, index) => (
-          <Item key={item.description} variant="outline" size="sm" role="listitem">
+          <Item key={item.position} variant="outline" size="sm" role="listitem">
             <ItemContent className="flex-col gap-0">
               <div className="flex items-end gap-2">
                 {renderItemFields(index)}
