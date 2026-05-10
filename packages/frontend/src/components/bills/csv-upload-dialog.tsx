@@ -1,4 +1,4 @@
-import { IconUpload } from "@tabler/icons-react";
+import { IconAlertTriangle, IconUpload } from "@tabler/icons-react";
 import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
@@ -61,11 +61,17 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
   const [csvText, setCsvText] = useState("");
   const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [result, setResult] = useState<{ created: number; vendorsCreated: string[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const importCsv = useImportCsv({
     onSuccess: (data) => {
+      setError(null);
       setResult(data);
       setStep("result");
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : "Import failed";
+      setError(message);
     },
   });
 
@@ -147,6 +153,12 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
                 ))}
               </TableBody>
             </Table>
+            {error && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <IconAlertTriangle className="mt-0.5 size-4 shrink-0" />
+                {error}
+              </div>
+            )}
           </div>
         )}
 
@@ -164,6 +176,7 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
                   setStep("upload");
                   setCsvText("");
                   setPreview([]);
+                  setError(null);
                 }}
               >
                 Back
