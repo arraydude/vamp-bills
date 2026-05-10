@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@workspace/ui/components/sidebar";
+import { getInitials } from "@workspace/ui/lib/format";
 import type * as React from "react";
 
 type NavUserProps = {
@@ -28,15 +29,6 @@ type NavUserProps = {
   onSignOut: () => void;
   children?: React.ReactNode;
 };
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function NavUser({ user, onSignOut, children }: NavUserProps) {
   const { isMobile } = useSidebar();

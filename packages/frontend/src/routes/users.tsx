@@ -1,4 +1,4 @@
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconSearch } from "@tabler/icons-react";
 import { createRoute, Outlet } from "@tanstack/react-router";
 import {
   getCoreRowModel,
@@ -7,36 +7,32 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { useState } from "react";
-import type { VendorListItem } from "@/api/vendors/queries.ts";
-import { useVendorsList } from "@/api/vendors/queries.ts";
-import { VendorFormDialog } from "@/components/vendors/vendor-form-dialog.tsx";
-import { columns } from "@/components/vendors/vendors-columns.tsx";
-import { VendorsTable } from "@/components/vendors/vendors-table.tsx";
+
+import { useUsersList } from "@/api/users/queries.ts";
+import { columns } from "@/components/users/users-columns.tsx";
+import { UsersTable } from "@/components/users/users-table.tsx";
 import { appLayoutProtectedRoute } from "@/routes/_app.tsx";
 
-export const vendorsRoute = createRoute({
+export const usersRoute = createRoute({
   getParentRoute: () => appLayoutProtectedRoute,
-  path: "/vendors",
-  staticData: { getTitle: () => "Vendors" },
+  path: "/users",
+  staticData: { getTitle: () => "Users" },
   component: () => <Outlet />,
 });
 
-export const vendorsIndexRoute = createRoute({
-  getParentRoute: () => vendorsRoute,
+export const usersIndexRoute = createRoute({
+  getParentRoute: () => usersRoute,
   path: "/",
-  component: VendorsPage,
+  component: UsersPage,
 });
 
-function VendorsPage() {
+function UsersPage() {
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingVendor, setEditingVendor] = useState<VendorListItem | null>(null);
 
-  const { data, isLoading } = useVendorsList();
+  const { data, isLoading } = useUsersList();
 
   // eslint-disable-next-line react-hooks/incompatible-library -- table instance is consumed within this component only; compiler already skips memoization
   const table = useReactTable({
@@ -55,25 +51,10 @@ function VendorsPage() {
     },
   });
 
-  const handleNewVendor = () => {
-    setEditingVendor(null);
-    setDialogOpen(true);
-  };
-
-  const handleRowClick = (id: string) => {
-    const vendor = data?.find((v) => v.id === id) ?? null;
-    setEditingVendor(vendor);
-    setDialogOpen(true);
-  };
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Vendors</h1>
-        <Button size="sm" onClick={handleNewVendor}>
-          <IconPlus className="size-4" />
-          New vendor
-        </Button>
+        <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
       </div>
 
       <div className="relative max-w-sm">
@@ -86,9 +67,7 @@ function VendorsPage() {
         />
       </div>
 
-      <VendorsTable table={table} isLoading={isLoading} onRowClick={handleRowClick} />
-
-      {dialogOpen && <VendorFormDialog open onOpenChange={setDialogOpen} vendor={editingVendor} />}
+      <UsersTable table={table} isLoading={isLoading} />
     </div>
   );
 }

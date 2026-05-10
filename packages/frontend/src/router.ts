@@ -7,6 +7,7 @@ import { indexRoute } from "@/routes/index.tsx";
 import { loginRoute } from "@/routes/login.tsx";
 import type { RouterContext } from "@/routes/root.tsx";
 import { rootRoute } from "@/routes/root.tsx";
+import { usersIndexRoute, usersRoute } from "@/routes/users.tsx";
 import { vendorsIndexRoute, vendorsRoute } from "@/routes/vendors.tsx";
 
 const routeTree = rootRoute.addChildren([
@@ -15,6 +16,7 @@ const routeTree = rootRoute.addChildren([
     indexRoute,
     billsRoute.addChildren([billsIndexRoute, billNewRoute, billDetailRoute]),
     vendorsRoute.addChildren([vendorsIndexRoute]),
+    usersRoute.addChildren([usersIndexRoute]),
   ]),
 ]);
 

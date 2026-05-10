@@ -1,6 +1,5 @@
-import { IconArrowLeft } from "@tabler/icons-react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import {
   Field,
@@ -155,14 +154,6 @@ export function BillPage({ bill }: BillPageProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        to="/bills"
-        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground print:hidden"
-      >
-        <IconArrowLeft className="size-4" />
-        Bills
-      </Link>
-
       <div className="flex flex-col gap-8 md:flex-row">
         <div className="flex-1">
           <form
