@@ -1,10 +1,12 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { SortIcon } from "@workspace/ui/components/sort-icon";
+import { getInitials } from "@workspace/ui/lib/format";
 import { format, parseISO } from "date-fns";
 
-import type { VendorListItem } from "@/api/vendors/queries.ts";
+import type { UserListItem } from "@/api/users/queries.ts";
 
-export const columns: ColumnDef<VendorListItem, unknown>[] = [
+export const columns: ColumnDef<UserListItem, unknown>[] = [
   {
     accessorKey: "name",
     header: ({ column }) => (
@@ -16,6 +18,15 @@ export const columns: ColumnDef<VendorListItem, unknown>[] = [
         Name
         <SortIcon sorted={column.getIsSorted()} />
       </button>
+    ),
+    cell: ({ row }) => (
+      <div className="flex items-center gap-3">
+        <Avatar size="sm">
+          {row.original.image && <AvatarImage src={row.original.image} alt={row.original.name} />}
+          <AvatarFallback className="text-xs">{getInitials(row.original.name)}</AvatarFallback>
+        </Avatar>
+        <span>{row.original.name}</span>
+      </div>
     ),
   },
   {
@@ -39,7 +50,7 @@ export const columns: ColumnDef<VendorListItem, unknown>[] = [
         className="flex items-center gap-1"
         onClick={column.getToggleSortingHandler()}
       >
-        Created
+        Joined
         <SortIcon sorted={column.getIsSorted()} />
       </button>
     ),

@@ -1,7 +1,7 @@
-import { IconArrowDown, IconArrowUp, IconSelector } from "@tabler/icons-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@vamp-bills/backend/trpc/router";
+import { SortIcon } from "@workspace/ui/components/sort-icon";
 import { compareAsc, format, parse, parseISO } from "date-fns";
 
 import { StatusBadge } from "@/components/bills/status-badge.tsx";
@@ -19,12 +19,6 @@ const usdFormat = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
-
-function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
-  if (sorted === "asc") return <IconArrowUp className="size-3.5" />;
-  if (sorted === "desc") return <IconArrowDown className="size-3.5" />;
-  return <IconSelector className="size-3.5 opacity-40" />;
-}
 
 export const columns: ColumnDef<BillListItem, unknown>[] = [
   {
