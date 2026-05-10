@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
+import { Spinner } from "@workspace/ui/components/spinner";
 import {
   Table,
   TableBody,
@@ -18,9 +19,9 @@ import {
 } from "@workspace/ui/components/table";
 import { useState } from "react";
 
-import { useImportCsv } from "@/api/bills/mutations.ts";
+import { useImportCsv, usePreviewCsv } from "@/api/bills/mutations.ts";
 
-type Step = "upload" | "preview" | "result";
+type Step = "upload" | "loading" | "preview" | "result";
 
 type PreviewRow = {
   vendor: string;
@@ -34,28 +35,6 @@ type CsvUploadDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-function parsePreview(text: string): PreviewRow[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
-  if (lines.length < 2) return [];
-
-  const header = lines[0];
-  if (!header) return [];
-  const headers = header.split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
-
-  const colIndex = Object.fromEntries(headers.map((h, i) => [h, i])) as Record<string, number>;
-
-  return lines.slice(1).map((line) => {
-    const fields = line.split(",").map((f) => f.trim());
-    return {
-      vendor: fields[colIndex.vendor] ?? "",
-      invoiceNumber: fields[colIndex.invoice_number] ?? "",
-      description: fields[colIndex.description] ?? "",
-      amount: fields[colIndex.amount] ?? "",
-      invoiceDate: fields[colIndex.invoice_date] ?? "",
-    };
-  });
-}
-
 export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
   const [step, setStep] = useState<Step>("upload");
   const [csvText, setCsvText] = useState("");
@@ -63,15 +42,31 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
   const [result, setResult] = useState<{ created: number; vendorsCreated: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const importCsv = useImportCsv({
+  const previewCsv = usePreviewCsv({
     onSuccess: (data) => {
-      setError(null);
-      setResult(data);
-      setStep("result");
+      if ("rows" in data) {
+        setPreview(data.rows);
+        setError(null);
+        setStep("preview");
+      }
     },
     onError: (err) => {
-      const message = err instanceof Error ? err.message : "Import failed";
-      setError(message);
+      setError(err instanceof Error ? err.message : "Failed to parse CSV");
+      setPreview([]);
+      setStep("preview");
+    },
+  });
+
+  const importCsv = useImportCsv({
+    onSuccess: (data) => {
+      if ("created" in data) {
+        setError(null);
+        setResult(data);
+        setStep("result");
+      }
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : "Import failed");
     },
   });
 
@@ -81,9 +76,8 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
 
     if (!file.name.endsWith(".csv")) {
       setError("Only .csv files are supported");
-      setStep("preview");
       setPreview([]);
-      setCsvText("");
+      setStep("preview");
       return;
     }
 
@@ -91,12 +85,13 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
     reader.onload = (event) => {
       const text = event.target?.result as string;
       setCsvText(text);
-      setPreview(parsePreview(text));
-      setError(null);
-      setStep("preview");
+      setStep("loading");
+      previewCsv.mutate({ csv: text, dryRun: true });
     };
     reader.readAsText(file);
   };
+
+  const isPending = previewCsv.isPending || importCsv.isPending;
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -104,12 +99,14 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
         <DialogHeader>
           <DialogTitle>
             {step === "upload" && "Import CSV"}
+            {step === "loading" && "Parsing CSV..."}
             {step === "preview" && "Preview"}
             {step === "result" && "Import Complete"}
           </DialogTitle>
           <DialogDescription>
             {step === "upload" &&
               "Upload a CSV with columns: vendor, invoice_number, description, amount, invoice_date, due_date"}
+            {step === "loading" && "Validating your CSV on the server..."}
             {step === "preview" && `${preview.length} row(s) found`}
             {step === "result" && result && (
               <>
@@ -138,30 +135,38 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
           </div>
         )}
 
+        {step === "loading" && (
+          <div className="flex items-center justify-center py-12">
+            <Spinner className="size-6" />
+          </div>
+        )}
+
         {step === "preview" && (
           <div className="max-h-80 overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {preview.map((row) => (
-                  <TableRow key={`${row.vendor}-${row.invoiceNumber}`}>
-                    <TableCell>{row.vendor}</TableCell>
-                    <TableCell>{row.invoiceNumber}</TableCell>
-                    <TableCell className="max-w-48 truncate">{row.description}</TableCell>
-                    <TableCell className="text-right tabular-nums">${row.amount}</TableCell>
-                    <TableCell>{row.invoiceDate}</TableCell>
+            {preview.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Invoice #</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Date</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {preview.map((row) => (
+                    <TableRow key={`${row.vendor}-${row.invoiceNumber}`}>
+                      <TableCell>{row.vendor}</TableCell>
+                      <TableCell>{row.invoiceNumber}</TableCell>
+                      <TableCell className="max-w-48 truncate">{row.description}</TableCell>
+                      <TableCell className="text-right tabular-nums">${row.amount}</TableCell>
+                      <TableCell>{row.invoiceDate}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
             {error && (
               <div className="mt-3 flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 <IconAlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -181,6 +186,7 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
             <>
               <Button
                 variant="outline"
+                disabled={isPending}
                 onClick={() => {
                   setStep("upload");
                   setCsvText("");
@@ -191,7 +197,7 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
                 Back
               </Button>
               <Button
-                disabled={preview.length === 0 || importCsv.isPending}
+                disabled={preview.length === 0 || isPending}
                 onClick={() => importCsv.mutate({ csv: csvText })}
               >
                 {importCsv.isPending ? "Creating..." : `Create ${preview.length} bill(s)`}

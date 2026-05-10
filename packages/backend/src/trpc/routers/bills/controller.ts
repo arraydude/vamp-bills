@@ -94,6 +94,7 @@ export type CreateBulkInput = z.infer<typeof createBulkInputShape>;
 
 export const importCsvInputShape = z.object({
   csv: z.string().min(1, "CSV content is required"),
+  dryRun: z.boolean().optional(),
 });
 export type ImportCsvInput = z.infer<typeof importCsvInputShape>;
 
@@ -276,7 +277,7 @@ export async function importCsv({
 }: {
   input: ImportCsvInput;
   ctx: AuthedCtx;
-}): Promise<{ created: number; vendorsCreated: string[] }> {
+}): Promise<{ rows: CsvRow[] } | { created: number; vendorsCreated: string[] }> {
   const { parse } = await import("csv-parse/sync");
   const records = parse(input.csv, {
     columns: true,
@@ -309,6 +310,10 @@ export async function importCsv({
     }
     return result.data;
   });
+
+  if (input.dryRun) {
+    return { rows };
+  }
 
   return createBulk({ input: { rows }, ctx });
 }

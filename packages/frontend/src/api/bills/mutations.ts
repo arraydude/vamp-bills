@@ -113,6 +113,17 @@ export function useArchiveBill(opts?: MutationCallbacks) {
 
 type ImportCsvResult = RouterOutputs["bills"]["importCsv"];
 
+export function usePreviewCsv(opts?: MutationCallbacks<ImportCsvResult>) {
+  const trpc = useTRPC();
+
+  return useMutation(
+    trpc.bills.importCsv.mutationOptions({
+      onSuccess: (data) => opts?.onSuccess?.(data),
+      onError: (error) => opts?.onError?.(error),
+    }),
+  );
+}
+
 export function useImportCsv(opts?: MutationCallbacks<ImportCsvResult>) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -120,9 +131,11 @@ export function useImportCsv(opts?: MutationCallbacks<ImportCsvResult>) {
   return useMutation(
     trpc.bills.importCsv.mutationOptions({
       onSuccess: (data) => {
-        void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
-        void queryClient.invalidateQueries({ queryKey: trpc.vendors.list.queryKey() });
-        toast.success(`${data.created} bill(s) created`);
+        if ("created" in data) {
+          void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
+          void queryClient.invalidateQueries({ queryKey: trpc.vendors.list.queryKey() });
+          toast.success(`${data.created} bill(s) created`);
+        }
         opts?.onSuccess?.(data);
       },
       onError: (error) => opts?.onError?.(error),
