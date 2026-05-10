@@ -207,29 +207,32 @@ export async function createBulk({
   const existing = await db.select({ id: vendors.id, name: vendors.name }).from(vendors);
   const vendorMap = new Map(existing.map((v) => [v.name.toLowerCase(), v.id]));
 
-  const newVendorNames = [
-    ...new Set(
-      input.rows.map((r) => r.vendor).filter((name) => !vendorMap.has(name.toLowerCase())),
-    ),
-  ];
-
-  if (newVendorNames.length > 0) {
-    const created = await db
-      .insert(vendors)
-      .values(
-        newVendorNames.map((name) => ({
-          name,
-          email: `${vendorSlug(name) || "vendor"}@example.com`,
-        })),
-      )
-      .returning();
-    for (const v of created) {
-      vendorMap.set(v.name.toLowerCase(), v.id);
+  const seen = new Set<string>();
+  const newVendorNames: string[] = [];
+  for (const row of input.rows) {
+    const key = row.vendor.toLowerCase();
+    if (!vendorMap.has(key) && !seen.has(key)) {
+      seen.add(key);
+      newVendorNames.push(row.vendor);
     }
   }
-
   let billCount = 0;
   await db.transaction(async (tx) => {
+    if (newVendorNames.length > 0) {
+      const created = await tx
+        .insert(vendors)
+        .values(
+          newVendorNames.map((name) => ({
+            name,
+            email: `${vendorSlug(name) || "vendor"}@example.com`,
+          })),
+        )
+        .returning();
+      for (const v of created) {
+        vendorMap.set(v.name.toLowerCase(), v.id);
+      }
+    }
+
     for (const row of input.rows) {
       const vendorId = vendorMap.get(row.vendor.toLowerCase());
       if (!vendorId) {
@@ -283,6 +286,7 @@ export async function importCsv({
     columns: true,
     skip_empty_lines: true,
     trim: true,
+    bom: true,
   }) as Record<string, string>[];
 
   if (records.length === 0) {

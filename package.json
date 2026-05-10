@@ -43,7 +43,5 @@
       "zod-validation-error": "^4.0.0"
     }
   },
-  "dependencies": {
-    "csv-parse": "^6.2.1"
-  }
+  "dependencies": {}
 }

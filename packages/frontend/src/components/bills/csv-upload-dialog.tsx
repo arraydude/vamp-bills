@@ -74,7 +74,7 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith(".csv")) {
+    if (!file.name.toLowerCase().endsWith(".csv")) {
       setError("Only .csv files are supported");
       setPreview([]);
       setStep("preview");
@@ -156,7 +156,7 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
                 </TableHeader>
                 <TableBody>
                   {preview.map((row) => (
-                    <TableRow key={`${row.vendor}-${row.invoiceNumber}`}>
+                    <TableRow key={`${row.vendor}-${row.invoiceNumber}-${row.amount}`}>
                       <TableCell>{row.vendor}</TableCell>
                       <TableCell>{row.invoiceNumber}</TableCell>
                       <TableCell className="max-w-48 truncate">{row.description}</TableCell>

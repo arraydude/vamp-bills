@@ -293,6 +293,36 @@ describe("bills router — markPaid reference", () => {
   });
 });
 
+describe("bills router — importCsv", () => {
+  test("importCsv dryRun returns parsed rows without inserting", async () => {
+    const { db } = await import("@vamp-bills/backend/db/client.ts");
+    vi.mocked(db.select).mockReturnValueOnce(mockChain([]));
+
+    const caller = createCaller(asUser("user-creator"));
+    const result = await caller.importCsv({
+      csv: "vendor,invoice_number,description,amount,invoice_date\nAcme,INV-1,Test,100.00,2026-01-01",
+      dryRun: true,
+    });
+    expect("rows" in result).toBe(true);
+    if ("rows" in result) {
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0]?.vendor).toBe("Acme");
+    }
+  });
+
+  test("importCsv rejects bad rows with row-numbered BAD_REQUEST", async () => {
+    const caller = createCaller(asUser("user-creator"));
+    await expect(
+      caller.importCsv({
+        csv: "vendor,invoice_number,description,amount,invoice_date\n,INV-1,Test,,bad-date",
+        dryRun: true,
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    } satisfies Partial<TRPCError>);
+  });
+});
+
 describe("bills router — state-machine wiring (BAD_REQUEST + missingPaths)", () => {
   test("submit on a bill missing required fields surfaces missingPaths via GuardFailedError", async () => {
     const { db } = await import("@vamp-bills/backend/db/client.ts");
