@@ -51,7 +51,7 @@ export const loginRoute = createRoute({
 function LoginPage() {
   const { redirect: redirectParam, mode } = loginRoute.useSearch();
   const navigate = useNavigate();
-  const { signIn, signUp, signInWithGoogle, isTransitioning, error: authError } = useAuth();
+  const { signIn, signUp, isTransitioning, error: authError } = useAuth();
   const target = sanitizeRedirect(redirectParam);
   const isSignup = mode === "signup";
 
@@ -168,14 +168,6 @@ function LoginPage() {
                       : isSignup
                         ? "Create account"
                         : "Login"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    type="button"
-                    disabled={isTransitioning}
-                    onClick={() => signInWithGoogle({ callbackURL: target })}
-                  >
-                    {isSignup ? "Sign up with Google" : "Login with Google"}
                   </Button>
                 </Field>
 
