@@ -15,18 +15,13 @@ type FieldErrors = Array<{ message?: string } | undefined>;
 
 type LineItemsFieldProps = {
   items: LineItem[];
+  totalAmount: string;
   disabled?: boolean;
   arrayErrors?: FieldErrors;
   onAdd: () => void;
   onRemove: (index: number) => void;
   renderItemFields: (index: number) => ReactNode;
 };
-
-function toCents(amount: string): number {
-  if (amount.trim() === "") return 0;
-  const n = Number(amount);
-  return Number.isFinite(n) ? Math.round(n * 100) : 0;
-}
 
 let nextKeyId = 0;
 function generateKey(): number {
@@ -35,14 +30,13 @@ function generateKey(): number {
 
 export function LineItemsField({
   items,
+  totalAmount,
   disabled,
   arrayErrors,
   onAdd,
   onRemove,
   renderItemFields,
 }: LineItemsFieldProps) {
-  const totalCents = items.reduce((acc, li) => acc + toCents(li.amount), 0);
-
   const [keys, setKeys] = useState(() => items.map(() => generateKey()));
 
   const handleAdd = useCallback(() => {
@@ -101,7 +95,7 @@ export function LineItemsField({
         </Button>
 
         <div className="text-sm font-medium tabular-nums">
-          Total: ${(totalCents / 100).toFixed(2)}
+          Total: ${Number(totalAmount).toFixed(2)}
         </div>
       </div>
     </div>

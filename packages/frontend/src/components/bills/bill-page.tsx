@@ -311,6 +311,7 @@ export function BillPage({ bill }: BillPageProps) {
                 {(arrayField) => (
                   <LineItemsField
                     items={arrayField.state.value}
+                    totalAmount={form.state.values.totalAmount}
                     disabled={!editable}
                     arrayErrors={mapErrors(arrayField.state.meta.errors)}
                     onAdd={() =>
