@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
+import { Spinner } from "@workspace/ui/components/spinner";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { format } from "date-fns";
 import { useEffect } from "react";
@@ -113,8 +114,9 @@ export function BillPage({ bill }: BillPageProps) {
   const isNew = bill === null;
   const editable = isNew || bill.bill.status === "draft" || bill.availableEvents.includes("EDIT");
 
-  const { data: vendors = [] } = useVendorsList();
-  const { data: users = [] } = useUsersList();
+  const { data: vendors = [], isLoading: vendorsLoading } = useVendorsList();
+  const { data: users = [], isLoading: usersLoading } = useUsersList();
+  const listsLoading = vendorsLoading || usersLoading;
 
   const createBill = useCreateBill({
     onSuccess: (data) => void navigate({ to: "/bills/$billId", params: { billId: data.bill.id } }),
@@ -151,6 +153,14 @@ export function BillPage({ bill }: BillPageProps) {
   }, [form, form.state.values.lineItems]);
 
   const isPending = createBill.isPending || updateBill.isPending;
+
+  if (listsLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Spinner className="size-6" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

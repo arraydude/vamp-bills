@@ -1,7 +1,7 @@
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { Button } from "@workspace/ui/components/button";
 import { FieldError, FieldSeparator } from "@workspace/ui/components/field";
-import { Item, ItemActions, ItemContent, ItemGroup } from "@workspace/ui/components/item";
+import { Item, ItemContent, ItemGroup } from "@workspace/ui/components/item";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
@@ -64,23 +64,27 @@ export function LineItemsField({
 
       <ItemGroup>
         {items.map((_item, index) => (
-          <Item key={keys[index]} variant="outline" size="sm" role="listitem">
-            <ItemContent className="flex-row items-center gap-2">
+          <Item
+            key={keys[index]}
+            variant="outline"
+            size="sm"
+            role="listitem"
+            className="flex-nowrap"
+          >
+            <ItemContent className="flex-row flex-wrap items-start gap-2">
               {renderItemFields(index)}
-            </ItemContent>
-
-            <ItemActions>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 type="button"
                 aria-label="Remove line item"
+                className="shrink-0 self-end"
                 disabled={disabled || items.length <= 1}
                 onClick={() => handleRemove(index)}
               >
                 <IconTrash className="size-4" />
               </Button>
-            </ItemActions>
+            </ItemContent>
           </Item>
         ))}
       </ItemGroup>
