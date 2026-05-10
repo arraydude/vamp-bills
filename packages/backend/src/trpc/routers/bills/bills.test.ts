@@ -106,6 +106,28 @@ describe("bills router — auth gate (UNAUTHORIZED)", () => {
     ["list", () => createCaller(noUserCtx()).list()],
     ["getById", () => createCaller(noUserCtx()).getById({ id: "b_1" })],
     ["create", () => createCaller(noUserCtx()).create(validCreateInput)],
+    [
+      "createBulk",
+      () =>
+        createCaller(noUserCtx()).createBulk({
+          rows: [
+            {
+              vendor: "V",
+              invoiceNumber: "I",
+              description: "D",
+              amount: "1.00",
+              invoiceDate: "2026-01-01",
+            },
+          ],
+        }),
+    ],
+    [
+      "importCsv",
+      () =>
+        createCaller(noUserCtx()).importCsv({
+          csv: "vendor,invoice_number,description,amount,invoice_date\nV,I,D,1.00,2026-01-01",
+        }),
+    ],
     ["update", () => createCaller(noUserCtx()).update({ id: "b_1", description: "changed" })],
     ["submit", () => createCaller(noUserCtx()).submit({ id: "b_1" })],
     ["approve", () => createCaller(noUserCtx()).approve({ id: "b_1" })],
@@ -268,6 +290,36 @@ describe("bills router — markPaid reference", () => {
     const result = await caller.markPaid({ id: "b_1" });
     expect(result.bill.status).toBe("paid");
     expect(result.payment?.reference).toBeNull();
+  });
+});
+
+describe("bills router — importCsv", () => {
+  test("importCsv dryRun returns parsed rows without inserting", async () => {
+    const { db } = await import("@vamp-bills/backend/db/client.ts");
+    vi.mocked(db.select).mockReturnValueOnce(mockChain([]));
+
+    const caller = createCaller(asUser("user-creator"));
+    const result = await caller.importCsv({
+      csv: "vendor,invoice_number,description,amount,invoice_date\nAcme,INV-1,Test,100.00,2026-01-01",
+      dryRun: true,
+    });
+    expect("rows" in result).toBe(true);
+    if ("rows" in result) {
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0]?.vendor).toBe("Acme");
+    }
+  });
+
+  test("importCsv rejects bad rows with row-numbered BAD_REQUEST", async () => {
+    const caller = createCaller(asUser("user-creator"));
+    await expect(
+      caller.importCsv({
+        csv: "vendor,invoice_number,description,amount,invoice_date\n,INV-1,Test,,bad-date",
+        dryRun: true,
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    } satisfies Partial<TRPCError>);
   });
 });
 

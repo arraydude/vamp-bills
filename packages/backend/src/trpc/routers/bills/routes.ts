@@ -10,6 +10,12 @@ export const billsRouter = router({
   list: protectedProcedure.input(controller.listInputShape.optional()).query(controller.list),
   getById: protectedProcedure.input(controller.billIdInputShape).query(controller.getById),
   create: protectedProcedure.input(controller.createInputShape).mutation(controller.create),
+  createBulk: protectedProcedure
+    .input(controller.createBulkInputShape)
+    .mutation(controller.createBulk),
+  importCsv: protectedProcedure
+    .input(controller.importCsvInputShape)
+    .mutation(controller.importCsv),
   update: protectedProcedure.input(controller.updateInputShape).mutation(controller.update),
 
   submit: protectedProcedure
