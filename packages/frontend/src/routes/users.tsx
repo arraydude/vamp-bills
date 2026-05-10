@@ -18,6 +18,7 @@ import { appLayoutProtectedRoute } from "@/routes/_app.tsx";
 export const usersRoute = createRoute({
   getParentRoute: () => appLayoutProtectedRoute,
   path: "/users",
+  staticData: { getTitle: () => "Users" },
   component: () => <Outlet />,
 });
 

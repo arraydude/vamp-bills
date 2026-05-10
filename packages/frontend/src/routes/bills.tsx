@@ -46,6 +46,7 @@ const TAB_LABELS: Record<TabValue, string> = {
 export const billsRoute = createRoute({
   getParentRoute: () => appLayoutProtectedRoute,
   path: "/bills",
+  staticData: { getTitle: () => "Bills" },
   component: () => <Outlet />,
 });
 
