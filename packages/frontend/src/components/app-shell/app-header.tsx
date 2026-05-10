@@ -1,23 +1,21 @@
-import { useRouterState } from "@tanstack/react-router";
-
+import { Link, useMatches } from "@tanstack/react-router";
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
-
-const ROUTE_TITLES: Record<string, string> = {
-  "/_app/bills": "Bills",
-  "/_app/vendors": "Vendors",
-};
+import { Fragment } from "react";
 
 export function AppHeader() {
-  const routeId = useRouterState({
-    select: (s) => s.matches.at(-1)?.routeId,
-  });
-  const title = (routeId && ROUTE_TITLES[routeId]) ?? "";
+  const matches = useMatches();
+
+  const crumbs = matches
+    .filter((m) => m.staticData?.getTitle)
+    .map((m) => ({ title: m.staticData.getTitle!(), path: m.pathname }));
 
   return (
     <header
@@ -27,9 +25,21 @@ export function AppHeader() {
       <SidebarTrigger />
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage>{title}</BreadcrumbPage>
-          </BreadcrumbItem>
+          {crumbs.map((crumb, i) => {
+            const isLast = i === crumbs.length - 1;
+            return (
+              <Fragment key={crumb.path}>
+                {i > 0 && <BreadcrumbSeparator />}
+                <BreadcrumbItem>
+                  {isLast ? (
+                    <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink render={<Link to={crumb.path} />}>{crumb.title}</BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </Fragment>
+            );
+          })}
         </BreadcrumbList>
       </Breadcrumb>
     </header>

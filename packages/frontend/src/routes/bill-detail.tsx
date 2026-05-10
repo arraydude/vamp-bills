@@ -8,6 +8,7 @@ import { billsRoute } from "@/routes/bills.tsx";
 export const billDetailRoute = createRoute({
   getParentRoute: () => billsRoute,
   path: "/$billId",
+  staticData: { getTitle: () => "Bill Details" },
   component: BillDetailPage,
 });
 

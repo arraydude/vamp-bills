@@ -6,5 +6,6 @@ import { billsRoute } from "@/routes/bills.tsx";
 export const billNewRoute = createRoute({
   getParentRoute: () => billsRoute,
   path: "/new",
+  staticData: { getTitle: () => "New Bill" },
   component: () => <BillPage bill={null} />,
 });

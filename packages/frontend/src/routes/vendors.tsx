@@ -20,6 +20,7 @@ import { appLayoutProtectedRoute } from "@/routes/_app.tsx";
 export const vendorsRoute = createRoute({
   getParentRoute: () => appLayoutProtectedRoute,
   path: "/vendors",
+  staticData: { getTitle: () => "Vendors" },
   component: () => <Outlet />,
 });
 
