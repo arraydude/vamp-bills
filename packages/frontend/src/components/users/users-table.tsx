@@ -26,6 +26,7 @@ export function UsersTable({
   table: Table<UserListItem>;
   isLoading: boolean;
 }) {
+  "use no memo";
   if (isLoading) {
     return <TableSkeleton />;
   }
