@@ -31,6 +31,9 @@ function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
+const gridCols = "grid-cols-1 md:grid-cols-2 lg:grid-cols-4";
+const cardBgGradient = "bg-linear-to-t from-primary/5 to-card";
+
 function MetricSkeleton() {
   return (
     <Card className="@container/card">
@@ -51,7 +54,7 @@ export function BillsMetrics() {
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs @xl:grid-cols-2 @5xl:grid-cols-4">
+      <div className={`grid ${gridCols} gap-4 *:data-[slot=card]:shadow-xs`}>
         <MetricSkeleton />
         <MetricSkeleton />
         <MetricSkeleton />
@@ -63,7 +66,9 @@ export function BillsMetrics() {
   const hasOverdue = data.overdueCount > 0;
 
   return (
-    <div className="grid grid-cols-4 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @xl:grid-cols-2 @5xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+    <div
+      className={`grid ${gridCols} gap-4 *:data-[slot=card]:${cardBgGradient} *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:bg-card`}
+    >
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>Total Paid</CardDescription>
