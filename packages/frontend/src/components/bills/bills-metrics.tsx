@@ -50,7 +50,11 @@ function MetricSkeleton() {
 }
 
 export function BillsMetrics() {
-  const { data, isLoading } = useBillsSummary();
+  const { data, isLoading, isError } = useBillsSummary();
+
+  if (isError) {
+    return null;
+  }
 
   if (isLoading || !data) {
     return (

@@ -136,7 +136,7 @@ export async function summary(): Promise<BillsSummary> {
     .where(
       and(
         sql`${bills.dueDate} < CURRENT_DATE`,
-        notInArray(bills.status, ["paid", "archived", "draft"]),
+        notInArray(bills.status, ["paid", "archived", "draft", "rejected"]),
       ),
     );
 
