@@ -1,4 +1,11 @@
-import { IconFileInvoice, IconMoon, IconReceipt, IconSun, IconUsers } from "@tabler/icons-react";
+import {
+  IconFileInvoice,
+  IconMoon,
+  IconReceipt,
+  IconSun,
+  IconUsers,
+  IconUsersGroup,
+} from "@tabler/icons-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { DropdownMenuItem } from "@workspace/ui/components/dropdown-menu";
 import { Kbd } from "@workspace/ui/components/kbd";
@@ -18,7 +25,7 @@ import { useTheme } from "@/components/theme-provider.tsx";
 import { useAuth } from "@/lib/use-auth.ts";
 
 type NavItem = {
-  to: "/bills" | "/vendors";
+  to: "/bills" | "/vendors" | "/users";
   label: string;
   icon: React.ReactNode;
   matchPrefix: string;
@@ -36,6 +43,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Vendors",
     icon: <IconUsers />,
     matchPrefix: "/vendors",
+  },
+  {
+    to: "/users",
+    label: "Users",
+    icon: <IconUsersGroup />,
+    matchPrefix: "/users",
   },
 ];
 
