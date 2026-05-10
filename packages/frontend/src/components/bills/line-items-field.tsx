@@ -64,26 +64,22 @@ export function LineItemsField({
 
       <ItemGroup>
         {items.map((_item, index) => (
-          <Item
-            key={keys[index]}
-            variant="outline"
-            size="sm"
-            role="listitem"
-            className="flex-nowrap"
-          >
-            <ItemContent className="flex-row flex-wrap items-start gap-2">
-              {renderItemFields(index)}
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                type="button"
-                aria-label="Remove line item"
-                className="shrink-0 self-end"
-                disabled={disabled || items.length <= 1}
-                onClick={() => handleRemove(index)}
-              >
-                <IconTrash className="size-4" />
-              </Button>
+          <Item key={keys[index]} variant="outline" size="sm" role="listitem">
+            <ItemContent className="flex-col gap-0">
+              <div className="flex items-end gap-2">
+                {renderItemFields(index)}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  type="button"
+                  aria-label="Remove line item"
+                  className="mb-0.5 shrink-0"
+                  disabled={disabled || items.length <= 1}
+                  onClick={() => handleRemove(index)}
+                >
+                  <IconTrash className="size-4" />
+                </Button>
+              </div>
             </ItemContent>
           </Item>
         ))}
