@@ -1,3 +1,5 @@
+"use no memo";
+
 import { IconSearch, IconUsersGroup } from "@tabler/icons-react";
 import { flexRender, type Table } from "@tanstack/react-table";
 import {

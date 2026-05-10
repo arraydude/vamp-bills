@@ -2,7 +2,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import { SortIcon } from "@workspace/ui/components/sort-icon";
 import { getInitials } from "@workspace/ui/lib/format";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 
 import type { UserListItem } from "@/api/users/queries.ts";
 
@@ -44,6 +44,7 @@ export const columns: ColumnDef<UserListItem, unknown>[] = [
   },
   {
     accessorKey: "createdAt",
+    enableGlobalFilter: false,
     header: ({ column }) => (
       <button
         type="button"
@@ -54,11 +55,11 @@ export const columns: ColumnDef<UserListItem, unknown>[] = [
         <SortIcon sorted={column.getIsSorted()} />
       </button>
     ),
-    cell: ({ row }) => format(parseISO(row.original.createdAt), "MMM d, yyyy"),
+    cell: ({ row }) => format(new Date(row.original.createdAt), "MMM d, yyyy"),
     sortingFn: (a, b, columnId) => {
-      const dateA = a.getValue<string>(columnId);
-      const dateB = b.getValue<string>(columnId);
-      return dateA.localeCompare(dateB);
+      const dateA = new Date(a.getValue<Date | string>(columnId)).getTime();
+      const dateB = new Date(b.getValue<Date | string>(columnId)).getTime();
+      return dateA - dateB;
     },
   },
 ];
