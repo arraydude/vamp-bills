@@ -1,5 +1,5 @@
 import { IconArrowLeft } from "@tabler/icons-react";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -29,6 +29,7 @@ import type { HydratedBill } from "@/api/bills/queries.ts";
 import { useUsersList } from "@/api/users/queries.ts";
 import { useVendorsList } from "@/api/vendors/queries.ts";
 import { BillActions } from "@/components/bills/bill-actions.tsx";
+import { BillPageSkeleton } from "@/components/bills/bill-page-skeleton.tsx";
 import { DatePickerField } from "@/components/bills/date-picker-field.tsx";
 import { LineItemsField } from "@/components/bills/line-items-field.tsx";
 import { authClient } from "@/lib/auth-client.ts";
@@ -113,8 +114,9 @@ export function BillPage({ bill }: BillPageProps) {
   const isNew = bill === null;
   const editable = isNew || bill.bill.status === "draft" || bill.availableEvents.includes("EDIT");
 
-  const { data: vendors = [] } = useVendorsList();
-  const { data: users = [] } = useUsersList();
+  const { data: vendors = [], isLoading: vendorsLoading } = useVendorsList();
+  const { data: users = [], isLoading: usersLoading } = useUsersList();
+  const listsLoading = vendorsLoading || usersLoading;
 
   const createBill = useCreateBill({
     onSuccess: (data) => void navigate({ to: "/bills/$billId", params: { billId: data.bill.id } }),
@@ -146,17 +148,16 @@ export function BillPage({ bill }: BillPageProps) {
     }
   }, [form, userId]);
 
-  useEffect(() => {
-    form.setFieldValue("totalAmount", computeTotal(form.state.values.lineItems));
-  }, [form, form.state.values.lineItems]);
-
   const isPending = createBill.isPending || updateBill.isPending;
+  const totalAmount = useStore(form.store, (s) => computeTotal(s.values.lineItems));
+
+  if (listsLoading) return <BillPageSkeleton />;
 
   return (
     <div className="flex flex-col gap-6">
       <Link
         to="/bills"
-        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground print:hidden"
       >
         <IconArrowLeft className="size-4" />
         Bills
@@ -307,6 +308,7 @@ export function BillPage({ bill }: BillPageProps) {
                 {(arrayField) => (
                   <LineItemsField
                     items={arrayField.state.value}
+                    totalAmount={totalAmount}
                     disabled={!editable}
                     arrayErrors={mapErrors(arrayField.state.meta.errors)}
                     onAdd={() =>
@@ -365,7 +367,7 @@ export function BillPage({ bill }: BillPageProps) {
               {editable && (
                 <>
                   <FieldSeparator />
-                  <div className="flex justify-end gap-2">
+                  <div className="flex justify-end gap-2 print:hidden">
                     <Button
                       variant="outline"
                       type="button"
@@ -384,7 +386,7 @@ export function BillPage({ bill }: BillPageProps) {
         </div>
 
         {bill && (
-          <aside className="w-full shrink-0 md:w-72">
+          <aside className="w-full shrink-0 print:hidden md:w-72">
             <BillActions bill={bill} />
           </aside>
         )}

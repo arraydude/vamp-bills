@@ -1,13 +1,12 @@
 import type { BillStatus } from "@vamp-bills/backend/domain/bill/status.ts";
 import { Badge } from "@workspace/ui/components/badge";
 
-const STATUS_VARIANT: Record<
-  BillStatus,
-  "default" | "secondary" | "destructive" | "outline" | "ghost"
-> = {
+type StatusVariant = "default" | "secondary" | "destructive" | "outline" | "ghost" | "link";
+
+const STATUS_VARIANT: Record<BillStatus, StatusVariant> = {
   draft: "outline",
   awaiting_approval: "secondary",
-  approved: "default",
+  approved: "secondary",
   rejected: "destructive",
   paid: "secondary",
   archived: "ghost",

@@ -1,6 +1,7 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { IconAlertTriangle, IconPrinter } from "@tabler/icons-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { Separator } from "@workspace/ui/components/separator";
 import { format } from "date-fns";
 import { useState } from "react";
 
@@ -95,60 +96,71 @@ export function BillActions({ bill }: BillActionsProps) {
       </div>
 
       {bill.payment && bill.payment.status === "paid" && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Payment
-          </span>
-          <div className="flex flex-col gap-1 text-sm">
-            {bill.payment.paidAt && (
-              <span>Paid on {format(new Date(bill.payment.paidAt), "MMM d, yyyy")}</span>
-            )}
-            {bill.payment.reference && (
-              <span className="text-muted-foreground">{bill.payment.reference}</span>
-            )}
+        <>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Payment
+            </span>
+            <div className="flex flex-col gap-1 text-sm">
+              {bill.payment.paidAt && (
+                <span>Paid on {format(new Date(bill.payment.paidAt), "MMM d, yyyy")}</span>
+              )}
+              {bill.payment.reference && (
+                <span className="text-muted-foreground">{bill.payment.reference}</span>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      {(visibleEvents.length > 0 || showMarkPaid) && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Actions
-          </span>
-          {showMarkPaid && (
+      <Separator className="print:hidden" />
+
+      <div className="flex flex-col gap-2 print:hidden">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Actions
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start"
+          onClick={() => window.print()}
+        >
+          <IconPrinter className="size-4" />
+          Print
+        </Button>
+        {showMarkPaid && (
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full justify-start"
+            disabled={anyPending}
+            onClick={() => setMarkPaidOpen(true)}
+          >
+            Mark as paid
+          </Button>
+        )}
+        {visibleEvents.map((event) => {
+          const procedure = EVENT_TO_PROCEDURE[event];
+          if (!procedure) return null;
+          const mutation = mutations[procedure];
+          if (!mutation) return null;
+          return (
             <Button
-              variant="default"
+              key={event}
+              variant={EVENT_VARIANT[event] ?? "outline"}
               size="sm"
               className="w-full justify-start"
               disabled={anyPending}
-              onClick={() => setMarkPaidOpen(true)}
+              onClick={() => mutation.mutate({ id: billId })}
             >
-              Mark as paid
+              {mutation.isPending ? "Processing..." : (EVENT_LABEL[event] ?? event)}
             </Button>
-          )}
-          {visibleEvents.map((event) => {
-            const procedure = EVENT_TO_PROCEDURE[event];
-            if (!procedure) return null;
-            const mutation = mutations[procedure];
-            if (!mutation) return null;
-            return (
-              <Button
-                key={event}
-                variant={EVENT_VARIANT[event] ?? "outline"}
-                size="sm"
-                className="w-full justify-start"
-                disabled={anyPending}
-                onClick={() => mutation.mutate({ id: billId })}
-              >
-                {mutation.isPending ? "Processing..." : (EVENT_LABEL[event] ?? event)}
-              </Button>
-            );
-          })}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {bill.missingPaths.length > 0 && bill.bill.status === "draft" && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 print:hidden">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Missing fields
           </span>
