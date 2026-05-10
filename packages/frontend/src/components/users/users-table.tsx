@@ -1,3 +1,5 @@
+"use no memo";
+
 import { IconSearch, IconUsersGroup } from "@tabler/icons-react";
 import { flexRender, type Table } from "@tanstack/react-table";
 import {
@@ -26,7 +28,6 @@ export function UsersTable({
   table: Table<UserListItem>;
   isLoading: boolean;
 }) {
-  "use no memo";
   if (isLoading) {
     return <TableSkeleton />;
   }
