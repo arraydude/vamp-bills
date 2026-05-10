@@ -1,4 +1,4 @@
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconPlus, IconSearch, IconUpload } from "@tabler/icons-react";
 import { createRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import {
   getCoreRowModel,
@@ -18,6 +18,7 @@ import { useBillsCounts, useBillsList } from "@/api/bills/queries.ts";
 import { columns } from "@/components/bills/bills-columns.tsx";
 import type { TabValue } from "@/components/bills/bills-empty-state.tsx";
 import { BillsTable } from "@/components/bills/bills-table.tsx";
+import { CsvUploadDialog } from "@/components/bills/csv-upload-dialog.tsx";
 import { appLayoutProtectedRoute } from "@/routes/_app.tsx";
 
 const billsSearchSchema = z.object({
@@ -60,6 +61,7 @@ function BillsPage() {
 
   const [search, setSearch] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [csvOpen, setCsvOpen] = useState(false);
 
   const { data, isLoading } = useBillsList({ status: [...TAB_STATUS_MAP[tab]] });
   const statusCounts = useBillsCounts();
@@ -85,10 +87,16 @@ function BillsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Bills</h1>
-        <Button size="sm" onClick={() => navigate({ to: "/bills/new" })}>
-          <IconPlus className="size-4" />
-          New bill
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCsvOpen(true)}>
+            <IconUpload className="size-4" />
+            Import CSV
+          </Button>
+          <Button size="sm" onClick={() => navigate({ to: "/bills/new" })}>
+            <IconPlus className="size-4" />
+            New bill
+          </Button>
+        </div>
       </div>
 
       <Tabs
@@ -126,6 +134,8 @@ function BillsPage() {
         isLoading={isLoading}
         onRowClick={(id) => navigate({ to: "/bills/$billId", params: { billId: id } })}
       />
+
+      {csvOpen && <CsvUploadDialog onOpenChange={setCsvOpen} />}
     </div>
   );
 }
