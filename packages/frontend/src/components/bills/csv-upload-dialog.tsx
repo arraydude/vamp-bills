@@ -79,11 +79,20 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.name.endsWith(".csv")) {
+      setError("Only .csv files are supported");
+      setStep("preview");
+      setPreview([]);
+      setCsvText("");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
       setCsvText(text);
       setPreview(parsePreview(text));
+      setError(null);
       setStep("preview");
     };
     reader.readAsText(file);
@@ -91,7 +100,7 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[100vw] md:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
             {step === "upload" && "Import CSV"}
