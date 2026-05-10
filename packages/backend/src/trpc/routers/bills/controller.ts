@@ -11,7 +11,7 @@ import {
 import { type BillStatus, billStatusSchema } from "@vamp-bills/backend/domain/bill/status.ts";
 import { derivedReadiness } from "@vamp-bills/backend/domain/bill/transitions.ts";
 import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -103,7 +103,76 @@ export const markPaidInputShape = billIdInputShape.extend({
 });
 export type MarkPaidInput = z.infer<typeof markPaidInputShape>;
 
+export type BillsSummary = {
+  paidTotal: number;
+  paidCount: number;
+  outstandingTotal: number;
+  outstandingCount: number;
+  pendingApprovalCount: number;
+  overdueTotal: number;
+  overdueCount: number;
+  avgAmount: number;
+  totalCount: number;
+};
+
 // ─── non-lifecycle handlers ────────────────────────────────────────────────
+
+export async function summary(): Promise<BillsSummary> {
+  const statusRows = await db
+    .select({
+      status: bills.status,
+      total: sql<string>`COALESCE(SUM(${bills.totalAmount}), '0')`,
+      billCount: count(),
+    })
+    .from(bills)
+    .groupBy(bills.status);
+
+  const [overdueRow] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(${bills.totalAmount}), '0')`,
+      billCount: count(),
+    })
+    .from(bills)
+    .where(
+      and(
+        sql`${bills.dueDate} < CURRENT_DATE`,
+        notInArray(bills.status, ["paid", "archived", "draft", "rejected"]),
+      ),
+    );
+
+  const result: BillsSummary = {
+    paidTotal: 0,
+    paidCount: 0,
+    outstandingTotal: 0,
+    outstandingCount: 0,
+    pendingApprovalCount: 0,
+    overdueTotal: Number(overdueRow?.total ?? 0),
+    overdueCount: overdueRow?.billCount ?? 0,
+    avgAmount: 0,
+    totalCount: 0,
+  };
+
+  let totalSum = 0;
+  for (const row of statusRows) {
+    const amount = Number(row.total);
+    result.totalCount += row.billCount;
+    totalSum += amount;
+
+    if (row.status === "paid") {
+      result.paidTotal = amount;
+      result.paidCount = row.billCount;
+    } else if (row.status === "awaiting_approval" || row.status === "approved") {
+      result.outstandingTotal += amount;
+      result.outstandingCount += row.billCount;
+      if (row.status === "awaiting_approval") {
+        result.pendingApprovalCount = row.billCount;
+      }
+    }
+  }
+
+  result.avgAmount = result.totalCount > 0 ? totalSum / result.totalCount : 0;
+  return result;
+}
 
 export async function list({ input, ctx }: { input: ListInput | undefined; ctx: AuthedCtx }) {
   const filters = [];

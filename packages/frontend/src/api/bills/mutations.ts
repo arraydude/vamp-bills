@@ -20,6 +20,7 @@ function useBillCacheUpdater() {
   return (data: HydratedBill) => {
     queryClient.setQueryData(trpc.bills.getById.queryKey({ id: data.bill.id }), data);
     void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
+    void queryClient.invalidateQueries({ queryKey: trpc.bills.summary.queryKey() });
   };
 }
 
@@ -133,6 +134,7 @@ export function useImportCsv(opts?: MutationCallbacks<ImportCsvResult>) {
       onSuccess: (data) => {
         if ("created" in data) {
           void queryClient.invalidateQueries({ queryKey: trpc.bills.list.queryKey() });
+          void queryClient.invalidateQueries({ queryKey: trpc.bills.summary.queryKey() });
           void queryClient.invalidateQueries({ queryKey: trpc.vendors.list.queryKey() });
           toast.success(`${data.created} bill(s) created`);
         }

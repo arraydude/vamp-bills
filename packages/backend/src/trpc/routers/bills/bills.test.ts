@@ -103,6 +103,7 @@ describe("bills router — auth gate (UNAUTHORIZED)", () => {
   };
 
   test.each([
+    ["summary", () => createCaller(noUserCtx()).summary()],
     ["list", () => createCaller(noUserCtx()).list()],
     ["getById", () => createCaller(noUserCtx()).getById({ id: "b_1" })],
     ["create", () => createCaller(noUserCtx()).create(validCreateInput)],
@@ -207,6 +208,63 @@ describe("bills router — authorization layer (FORBIDDEN)", () => {
     await expect(caller.reject({ id: "b_1" })).rejects.toMatchObject({
       code: "FORBIDDEN",
     } satisfies Partial<TRPCError>);
+  });
+});
+
+describe("bills router — summary", () => {
+  test("summary returns aggregated metrics from status rows", async () => {
+    const { db } = await import("@vamp-bills/backend/db/client.ts");
+
+    vi.mocked(db.select)
+      // statusRows query
+      .mockReturnValueOnce(
+        mockChain([
+          { status: "paid", total: "350.00", billCount: 3 },
+          { status: "awaiting_approval", total: "500.00", billCount: 2 },
+          { status: "approved", total: "200.00", billCount: 1 },
+          { status: "draft", total: "100.00", billCount: 4 },
+        ]),
+      )
+      // overdueRow query
+      .mockReturnValueOnce(mockChain([{ total: "150.00", billCount: 1 }]));
+
+    const caller = createCaller(asUser("u_1"));
+    const result = await caller.summary();
+
+    expect(result).toEqual({
+      paidTotal: 350,
+      paidCount: 3,
+      outstandingTotal: 700,
+      outstandingCount: 3,
+      pendingApprovalCount: 2,
+      overdueTotal: 150,
+      overdueCount: 1,
+      avgAmount: 1150 / 10,
+      totalCount: 10,
+    });
+  });
+
+  test("summary returns zeros when no bills exist", async () => {
+    const { db } = await import("@vamp-bills/backend/db/client.ts");
+
+    vi.mocked(db.select)
+      .mockReturnValueOnce(mockChain([]))
+      .mockReturnValueOnce(mockChain([undefined]));
+
+    const caller = createCaller(asUser("u_1"));
+    const result = await caller.summary();
+
+    expect(result).toEqual({
+      paidTotal: 0,
+      paidCount: 0,
+      outstandingTotal: 0,
+      outstandingCount: 0,
+      pendingApprovalCount: 0,
+      overdueTotal: 0,
+      overdueCount: 0,
+      avgAmount: 0,
+      totalCount: 0,
+    });
   });
 });
 

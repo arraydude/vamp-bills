@@ -7,6 +7,7 @@ import * as controller from "./controller.ts";
 // machine handler) only needs one line here + the matching state in
 // `domain/bill/machine.ts`.
 export const billsRouter = router({
+  summary: protectedProcedure.query(controller.summary),
   list: protectedProcedure.input(controller.listInputShape.optional()).query(controller.list),
   getById: protectedProcedure.input(controller.billIdInputShape).query(controller.getById),
   create: protectedProcedure.input(controller.createInputShape).mutation(controller.create),

@@ -17,6 +17,7 @@ import { z } from "zod";
 import { useBillsCounts, useBillsList } from "@/api/bills/queries.ts";
 import { columns } from "@/components/bills/bills-columns.tsx";
 import type { TabValue } from "@/components/bills/bills-empty-state.tsx";
+import { BillsMetrics } from "@/components/bills/bills-metrics.tsx";
 import { BillsTable } from "@/components/bills/bills-table.tsx";
 import { CsvUploadDialog } from "@/components/bills/csv-upload-dialog.tsx";
 import { appLayoutProtectedRoute } from "@/routes/_app.tsx";
@@ -98,6 +99,8 @@ function BillsPage() {
           </Button>
         </div>
       </div>
+
+      <BillsMetrics />
 
       <Tabs
         value={tab}
