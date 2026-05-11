@@ -1,11 +1,11 @@
 import type { VercelConfig } from "@vercel/config/v1";
 
-// pnpm's strict isolation + symlinked .pnpm store breaks Vercel's NFT
-// tracer for transitive deps. Using shamefully-hoist on Vercel only
-// creates a flat node_modules that NFT can trace. Local dev keeps strict
-// pnpm (the .npmrc stays empty).
+// pnpm always uses symlinks — even with shamefully-hoist, actual files
+// live in .pnpm/ behind symlink chains that Vercel can't follow.
+// node-linker=hoisted creates real flat files with no symlinks at all.
+// Only set on Vercel — local dev keeps default pnpm strict isolation.
 export const config: VercelConfig = {
-  installCommand: "echo shamefully-hoist=true > .npmrc && pnpm install",
+  installCommand: "echo node-linker=hoisted > .npmrc && pnpm install",
   buildCommand: "pnpm --filter @vamp-bills/frontend build",
   outputDirectory: "packages/frontend/dist",
   rewrites: [
