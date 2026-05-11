@@ -56,24 +56,9 @@ importers:
 
   packages/backend:
     dependencies:
-      '@ai-sdk/gateway':
-        specifier: ^3.0.112
-        version: 3.0.112(zod@4.4.2)
       '@ai-sdk/google':
         specifier: ^3.0.71
         version: 3.0.71(zod@4.4.2)
-      '@ai-sdk/provider':
-        specifier: ^3.0.10
-        version: 3.0.10
-      '@ai-sdk/provider-utils':
-        specifier: ^4.0.27
-        version: 4.0.27(zod@4.4.2)
-      '@opentelemetry/api':
-        specifier: ^1.9.1
-        version: 1.9.1
-      '@standard-schema/spec':
-        specifier: ^1.1.0
-        version: 1.1.0
       '@trpc/server':
         specifier: ^11.17.0
         version: 11.17.0(typescript@6.0.3)
@@ -98,15 +83,9 @@ importers:
       drizzle-zod:
         specifier: ^0.8.3
         version: 0.8.3(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.20.0)(better-sqlite3@12.9.0)(kysely@0.28.17)(pg@8.20.0))(zod@4.4.2)
-      eventsource-parser:
-        specifier: ^3.0.8
-        version: 3.0.8
       express:
         specifier: ^5.2.1
         version: 5.2.1
-      json-schema:
-        specifier: ^0.4.0
-        version: 0.4.0
       pg:
         specifier: ^8.20.0
         version: 8.20.0
@@ -5065,7 +5044,8 @@ snapshots:
 
   '@opentelemetry/api@1.9.0': {}
 
-  '@opentelemetry/api@1.9.1': {}
+  '@opentelemetry/api@1.9.1':
+    optional: true
 
   '@oxc-project/types@0.127.0': {}
 
