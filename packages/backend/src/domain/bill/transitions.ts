@@ -33,7 +33,7 @@ const EVENT_ALLOWED_BY_ROLE: Record<BillEventType, ReadonlySet<ActorRole>> = {
   SUBMIT: new Set(["creator"]),
   APPROVE: new Set(["approver"]),
   REJECT: new Set(["approver"]),
-  MARK_PAID: new Set(["creator"]),
+  MARK_PAID: new Set(["creator", "approver"]),
   CANCEL_PAYMENT: new Set(["creator"]),
   ARCHIVE: new Set(["creator"]),
   EDIT: new Set(["creator"]),

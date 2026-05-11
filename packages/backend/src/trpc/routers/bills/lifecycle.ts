@@ -4,7 +4,14 @@ import { db } from "@vamp-bills/backend/db/client.ts";
 import type { BillEventType } from "@vamp-bills/backend/domain/bill/events.ts";
 import { and, eq } from "drizzle-orm";
 
-import { assertApprover, assertCreator, hydrate, loadBundle, transitionOrThrow } from "./helpers";
+import {
+  assertApprover,
+  assertCreator,
+  assertCreatorOrApprover,
+  hydrate,
+  loadBundle,
+  transitionOrThrow,
+} from "./helpers";
 import type { BillIdInput, MarkPaidInput } from "./schemas";
 import type { AuthedCtx, BillRow, Bundle, HydratedBill, PaymentRow } from "./types";
 
@@ -102,7 +109,7 @@ export async function markPaid({
   ctx: AuthedCtx;
 }): Promise<HydratedBill> {
   const bundle = await loadBundle(input.id);
-  assertCreator(bundle.bill, ctx.user.id);
+  assertCreatorOrApprover(bundle.bill, ctx.user.id);
   const nextStatus = transitionOrThrow(bundle.bill.status, { type: "MARK_PAID" }, bundle);
 
   const result = await db.transaction(async (tx) => {

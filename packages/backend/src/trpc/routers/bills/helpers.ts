@@ -34,6 +34,15 @@ export function assertApprover(bill: BillRow, userId: string): void {
   }
 }
 
+export function assertCreatorOrApprover(bill: BillRow, userId: string): void {
+  if (bill.createdBy !== userId && bill.approverId !== userId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "only the bill creator or approver can perform this action",
+    });
+  }
+}
+
 export function actorRoles(bill: BillRow, userId: string): ActorRoles {
   const roles = new Set<"creator" | "approver">();
   if (bill.createdBy === userId) roles.add("creator");

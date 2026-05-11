@@ -2,6 +2,7 @@ import { bills, vendors } from "@vamp-bills/backend/db/app-schema.ts";
 import { user } from "@vamp-bills/backend/db/auth-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
 import { and, count, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { hydrate, loadBundle } from "./helpers";
 import type { BillIdInput, ListInput } from "./schemas";
@@ -80,6 +81,7 @@ export async function list({ input, ctx }: { input: ListInput | undefined; ctx: 
   }
   const where =
     filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters);
+  const creator = alias(user, "creator");
   return db
     .select({
       id: bills.id,
@@ -92,6 +94,7 @@ export async function list({ input, ctx }: { input: ListInput | undefined; ctx: 
       vendorId: bills.vendorId,
       vendorName: vendors.name,
       createdBy: bills.createdBy,
+      creatorName: creator.name,
       approverId: bills.approverId,
       createdAt: bills.createdAt,
       updatedAt: bills.updatedAt,
@@ -100,6 +103,7 @@ export async function list({ input, ctx }: { input: ListInput | undefined; ctx: 
     .from(bills)
     .leftJoin(vendors, eq(bills.vendorId, vendors.id))
     .leftJoin(user, eq(bills.approverId, user.id))
+    .leftJoin(creator, eq(bills.createdBy, creator.id))
     .where(where)
     .orderBy(desc(bills.createdAt));
 }

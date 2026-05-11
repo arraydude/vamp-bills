@@ -20,8 +20,8 @@ Walk through the app in this order to see everything:
    - **AI scan:** drag an invoice image or PDF, watch the form populate in ~5s
 4. **Submit for approval** — pick an approver (can be yourself; flagged with a "Self-approved" badge)
 5. **Approve** the bill from the "Awaiting approval" tab
-6. **Mark as paid** — add an optional reference like "Wire ref 12345"
-7. **Edit an approved bill** — notice it bounces back to "Awaiting approval" automatically
+6. **Mark as paid** — add an optional reference like "Wire ref 12345" (available to both the creator and the approver)
+7. **Edit an approved bill** (creator only) — notice it bounces back to "Awaiting approval" automatically
 8. **Archive** when done
 
 Other things to poke at:
