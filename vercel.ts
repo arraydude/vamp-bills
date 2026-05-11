@@ -13,4 +13,9 @@ export const config: VercelConfig = {
     { source: "/api/auth/(.*)", destination: "/api/index" },
     { source: "/((?!trpc|api).*)", destination: "/index.html" },
   ],
+  functions: {
+    "api/index.ts": {
+      includeFiles: "packages/backend/{src,drizzle}/**",
+    },
+  },
 };
