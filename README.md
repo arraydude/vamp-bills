@@ -5,6 +5,7 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 **Live demo:** https://vamp-bills.vercel.app
 
 - Scope and lifecycle: [`docs/mvp-scope.md`](./docs/mvp-scope.md)
+- Local setup: [`docs/SETUP.md`](./docs/SETUP.md)
 - Branching workflow: [`docs/contributing.md`](./docs/contributing.md)
 
 ## Features & happy path
@@ -46,7 +47,7 @@ Other things to poke at:
 
 ## Why this stack?
 
-Well established patterns from the industry, shipped fast with AI assistance. I wired 23 domain-specific skills (tRPC, Drizzle, BetterAuth, shadcn, AI SDK...), MCPs, and spec-driven workflows.
+Well established patterns from the industry, shipped fast with AI assistance. I wired domain-specific skills (tRPC, Drizzle, BetterAuth, shadcn, AI SDK...), MCPs, and spec-driven workflows.
 
 I chose Vite + Express over Next.js: no SSR needed for this app, simpler mental model, and no coupling to a specific platform's framework.
 
