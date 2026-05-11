@@ -2,10 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { bills, payments } from "@vamp-bills/backend/db/app-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
 import { desc, eq } from "drizzle-orm";
-import { z } from "zod";
 
-export const listForBillInputShape = z.object({ billId: z.string().min(1) });
-export type ListForBillInput = z.infer<typeof listForBillInputShape>;
+import type { ListForBillInput } from "./schemas.ts";
 
 export async function listForBill({ input }: { input: ListForBillInput }) {
   // Pre-check the parent bill exists so a typo'd / unknown billId surfaces

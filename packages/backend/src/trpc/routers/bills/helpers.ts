@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { billLineItems, bills, payments, vendors } from "@vamp-bills/backend/db/app-schema.ts";
 import { user } from "@vamp-bills/backend/db/auth-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
+import type { ReadinessLineItem } from "@vamp-bills/backend/domain/bill/schemas.ts";
 import { missingPaths } from "@vamp-bills/backend/domain/bill/schemas.ts";
 import type { BillStatus } from "@vamp-bills/backend/domain/bill/status.ts";
 import {
@@ -10,40 +11,10 @@ import {
   availableEvents,
   derivedReadiness,
 } from "@vamp-bills/backend/domain/bill/transitions.ts";
-import type { Context } from "@vamp-bills/backend/trpc/context.ts";
 import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
 import { asc, desc, eq } from "drizzle-orm";
 
-// Narrowed context shape inside `protectedProcedure` — used by controller
-// handlers that import this module directly. Mirrors the narrowing tRPC
-// performs in `trpc.ts` so handlers in `controller.ts` get `ctx.user.id`
-// without needing to import tRPC's procedure-builder type machinery.
-export type AuthedCtx = Omit<Context, "user"> & { user: NonNullable<Context["user"]> };
-
-export type BillRow = typeof bills.$inferSelect;
-export type BillLineItemRow = typeof billLineItems.$inferSelect;
-export type PaymentRow = typeof payments.$inferSelect;
-
-export type Bundle = {
-  bill: BillRow;
-  lineItems: BillLineItemRow[];
-  payment: PaymentRow | null;
-  approverName: string | null;
-};
-
-// Single canonical contract for FE: every `getById` and lifecycle mutation
-// returns this shape so the FE never re-derives availableEvents / missingPaths.
-// Built inline (never via `createCaller`) per the @trpc/server#server-side-calls
-// skill — invoking createCaller inside a procedure re-runs middleware and
-// re-validates input, which is the wrong pattern.
-export type HydratedBill = {
-  bill: BillRow;
-  lineItems: BillLineItemRow[];
-  payment: PaymentRow | null;
-  availableEvents: ReturnType<typeof availableEvents>;
-  missingPaths: string[];
-  approverName: string | null;
-};
+import type { BillLineItemRow, BillRow, Bundle, HydratedBill, PaymentRow } from "./types.ts";
 
 // Auth helpers — load the bill first, then check. Can't run as middleware
 // because the bill row drives the check (creator vs approver).
@@ -167,12 +138,6 @@ export async function loadBundle(billId: string): Promise<Bundle> {
 // mutation can pass a mix of fresh inputs (no id/billId/timestamps) and
 // persisted rows. derivedReadiness/missingPaths only inspect
 // description/amount/position, so extra columns are ignored.
-export type ReadinessLineItem = {
-  description: string;
-  amount: string;
-  position: number;
-};
-
 export function transitionOrThrow(
   current: BillStatus,
   event: Parameters<typeof attemptTransition>[1],
