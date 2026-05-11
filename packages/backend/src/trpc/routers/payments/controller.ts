@@ -6,10 +6,6 @@ import { desc, eq } from "drizzle-orm";
 import type { ListForBillInput } from "./schemas.ts";
 
 export async function listForBill({ input }: { input: ListForBillInput }) {
-  // Pre-check the parent bill exists so a typo'd / unknown billId surfaces
-  // as 404 instead of a silent empty array (which is otherwise
-  // indistinguishable from "this bill exists but has no payments yet").
-  // Matches the NOT_FOUND posture the rest of the router takes for bad ids.
   const [bill] = await db
     .select({ id: bills.id })
     .from(bills)

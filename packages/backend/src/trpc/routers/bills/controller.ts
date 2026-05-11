@@ -36,9 +36,6 @@ import type {
   PaymentRow,
 } from "./types.ts";
 
-// Zod input schemas live here next to the handlers (they're load-bearing for
-// the public API contract); routes.ts wires them onto procedures.
-
 export type ListInput = {
   status?: BillStatus | BillStatus[] | "all";
   scope?: "mine" | "approving" | "all";
@@ -62,10 +59,7 @@ export const updateInputShape = insertBillSchema
     id: z.string().min(1),
     lineItems: z.array(insertLineItemSchema).optional(),
   })
-  // Reject id-only payloads. Without this guard a no-op `bills.update({ id })`
-  // call still fires EDIT on an approved/rejected bill (round-tripping it back
-  // to awaiting_approval with no actual change). The Zod-level reject keeps
-  // the FE error contract uniform — same envelope as any other bad input.
+  // Reject id-only payloads — would fire a no-op EDIT on approved/rejected bills.
   .superRefine((val, ctx) => {
     const { id: _id, lineItems, ...rest } = val;
     const hasFieldPatch = Object.values(rest).some((v) => v !== undefined);
@@ -116,8 +110,6 @@ export const extractFromInvoiceInputShape = z.object({
   }),
 });
 export type ExtractFromInvoiceInput = z.infer<typeof extractFromInvoiceInputShape>;
-
-// ─── non-lifecycle handlers ────────────────────────────────────────────────
 
 export async function summary(): Promise<BillsSummary> {
   const statusRows = await db
@@ -235,9 +227,6 @@ export async function create({
   ctx: AuthedCtx;
 }): Promise<HydratedBill> {
   const { lineItems: items, ...billFields } = input;
-  // Pre-flight FK existence: turn typo'd ids into 4xx instead of letting the
-  // FK constraint surface as a 500 via the production-masking branch in the
-  // errorFormatter.
   await assertVendorExists(billFields.vendorId);
   await assertApproverExists(billFields.approverId);
   const created = await db.transaction(async (tx) => {
@@ -421,22 +410,12 @@ export async function update({
   const mergedItems = nextItems ?? bundle.lineItems;
   const mergedBill: BillRow = { ...bundle.bill, ...patch };
 
-  // Short-circuit no-change saves: a full-form save where every field equals
-  // its current value (common UX pattern — user opens edit form, clicks Save
-  // without touching anything) must NOT fire EDIT and bump an approved /
-  // rejected bill back to awaiting_approval. The Zod superRefine catches
-  // id-only payloads at the input layer; this catches the deeper case where
-  // every field is present but unchanged.
+  // Skip no-op saves so unchanged fields don't bump approved bills back to awaiting_approval.
   if (!hasActualChange(bundle, patch, nextItems)) {
     return hydrate(bundle.bill, bundle.lineItems, bundle.payment, ctx.user.id, bundle.approverName);
   }
 
-  // Defense-in-depth readiness check on the merged shape: drafts may legally
-  // be incomplete (the user is still filling them in), but anything beyond
-  // draft must remain ready after the patch — otherwise the next APPROVE
-  // would be blocked by the machine guard with no way for the FE to surface
-  // *which* fields broke it. Surface the missingPaths via GuardFailedError so
-  // the frontend can highlight the offending fields.
+  // Non-draft bills must stay ready after edits.
   if (bundle.bill.status !== "draft") {
     const readiness = derivedReadiness({ ...mergedBill, lineItems: mergedItems });
     if (!readiness.isReady) {
@@ -499,11 +478,6 @@ export async function update({
   return hydrate(updated.bill, updated.lineItems, bundle.payment, ctx.user.id, approverName);
 }
 
-// True iff the patch or nextItems actually differ from the loaded bundle.
-// Field-level equality only compares keys present in the patch (an omitted
-// key means "no change"). Line items compare description/amount/position
-// pairwise — the only fields the user can edit. Order matters because
-// `position` is a user-controlled column.
 function hasActualChange(
   bundle: Bundle,
   patch: Partial<BillRow>,
@@ -526,19 +500,6 @@ function hasActualChange(
     );
   });
 }
-
-// ─── lifecycle factory ─────────────────────────────────────────────────────
-//
-// All seven lifecycle mutations (submit/approve/reject/markPaid/cancelPayment/
-// archive/edit) share the same body: load → assert role → transition → write
-// status (with optimistic lock) → optional payment side effect → hydrate. The
-// factory parameterizes the three things that vary (event, role, side effect)
-// so the routes.ts entries collapse to one declarative line each.
-//
-// `transitionOrThrow` may legally return the current status (no XState event
-// in this machine is currently a self-action, but defensive: we skip the
-// bills update when status doesn't change AND skip the side effect too, so a
-// future no-op event can't accidentally run a payment write).
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -673,8 +634,6 @@ export async function markPaid({
   return hydrate(result.bill, bundle.lineItems, result.payment, ctx.user.id, bundle.approverName);
 }
 
-// ─── AI invoice extraction ───────────────────────────────────────────────
-
 export async function extractFromInvoice({
   input,
 }: {
@@ -687,10 +646,7 @@ export async function extractFromInvoice({
     });
   }
 
-  // Dynamic import: the AI SDK + Google provider have deep transitive deps
-  // that pnpm's symlinked .pnpm store can't expose to Vercel's NFT tracer.
-  // Lazy-loading keeps them out of the startup import graph so auth/tRPC/
-  // bills CRUD work even when AI deps aren't bundled.
+  // Dynamic import — AI deps can't be statically traced by Vercel's bundler.
   const { extractInvoiceFields } = await import("@vamp-bills/backend/ai/extract-invoice.ts");
   const extracted = await extractInvoiceFields({
     base64: input.base64,
