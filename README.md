@@ -7,6 +7,7 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 - Scope and lifecycle: [`docs/mvp-scope.md`](./docs/mvp-scope.md)
 - Local setup: [`docs/SETUP.md`](./docs/SETUP.md)
 - Branching workflow: [`docs/contributing.md`](./docs/contributing.md)
+- Sample invoices for testing: [`docs/invoices/`](./docs/invoices/)
 
 ## Features & happy path
 
