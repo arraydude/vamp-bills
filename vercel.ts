@@ -6,7 +6,7 @@ import type { VercelConfig } from "@vercel/config/v1";
 // Only set on Vercel — local dev keeps default pnpm strict isolation.
 export const config: VercelConfig = {
   installCommand: "echo node-linker=hoisted > .npmrc && pnpm install",
-  buildCommand: "pnpm --filter @vamp-bills/frontend build",
+  buildCommand: "cd packages/frontend && npx vite build",
   outputDirectory: "packages/frontend/dist",
   rewrites: [
     { source: "/trpc/(.*)", destination: "/api/index" },
