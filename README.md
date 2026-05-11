@@ -2,46 +2,80 @@
 
 A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 
-**Live demo:** https://vamp-bills.vercel.app — landing page renders a typed `useQuery(trpc.health.queryOptions())` roundtrip through Vercel serverless → Neon Postgres. The `health: ok=true ts=…` line proves the FE↔BE seam is live in production. Press <kbd>d</kbd> to toggle dark mode.
+**Live demo:** https://vamp-bills.vercel.app
 
 - Scope and lifecycle: [`docs/mvp-scope.md`](./docs/mvp-scope.md)
 - Branching workflow: [`docs/contributing.md`](./docs/contributing.md)
-- Boilerplate spec (archived, completed 2026-05-03): [`.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md`](./.claude/specs/archive/BOILERPLATE_SCAFFOLDING_SPEC_COMPLETED_2026-05-03.md)
 
-## Database
+## Features & happy path
 
-Application tables live in [`packages/backend/src/db/app-schema.ts`](./packages/backend/src/db/app-schema.ts) (`vendors`, `bills`, `bill_line_items`, `payments`) alongside the BetterAuth-generated tables in `auth-schema.ts`. Field-level definitions, status enums, and the bill/payment lifecycle are documented in [`docs/mvp-scope.md`](./docs/mvp-scope.md).
+Walk through the app in this order to see everything:
 
-**Schema sync — `db:push`, not migrations (demo phase).** During the MVP/demo phase the Drizzle schema files are the single source of truth and `pnpm db:push` syncs them to both local Postgres and Neon. We deliberately don't use the `drizzle-kit migrate` flow yet — there's no production data to protect, no team coordination problem to solve, and no rollback story we'd ever exercise. Before productionizing this app for real, switch to `drizzle-kit migrate` plus a baseline strategy on Neon (see [Drizzle migration docs](https://orm.drizzle.team/docs/migrations)).
+1. **Sign up** with email + password
+2. **Create a vendor** (name + email) — vendors are required on every bill
+3. **Create a bill** — pick your method:
+   - **Manual:** fill the form by hand
+   - **CSV import:** upload a spreadsheet to create multiple bills at once
+   - **AI scan:** drag an invoice image or PDF, watch the form populate in ~5s
+4. **Submit for approval** — pick an approver (can be yourself; flagged with a "Self-approved" badge)
+5. **Approve** the bill from the "Awaiting approval" tab
+6. **Mark as paid** — add an optional reference like "Wire ref 12345"
+7. **Edit an approved bill** — notice it bounces back to "Awaiting approval" automatically
+8. **Archive** when done
 
-The two commands actually used:
+Other things to poke at:
 
-- `pnpm db:generate` — emit SQL into [`packages/backend/drizzle/`](./packages/backend/drizzle/) for **review purposes only**. Run after a schema change so the PR diff includes the actual DDL reviewers can read. Pass `--name <descriptive_name>` so files land as `NNNN_<descriptive_name>.sql`. See [`packages/backend/drizzle/README.md`](./packages/backend/drizzle/README.md) for the "reference, not applied" caveat.
-- `pnpm db:push` — direct schema → DB sync against `DATABASE_URL`. Used for local dev. Neon syncs **automatically** on every push to `main` via [`.github/workflows/db-push.yml`](./.github/workflows/db-push.yml) — no manual step needed for non-destructive changes; see [`packages/backend/drizzle/README.md`](./packages/backend/drizzle/README.md) for the destructive-change escape hatch.
+- **Tabbed bill list** — Drafts / Awaiting approval / Awaiting payment / History, each with badge counts
+- **Search and sort** by vendor, due date, or amount
+- **Line items** with automatic total reconciliation (amounts must add up)
+- **Financial summary cards** at the top of the bills page (paid total, outstanding, overdue)
 
 ## Stack
 
 | Layer | Choice |
 |---|---|
-| Monorepo | pnpm workspaces (no Turbo — `pnpm -r --parallel` is enough) |
+| Monorepo | pnpm workspaces |
 | Frontend | Vite 8 + React 19 + React Compiler, TanStack Router/Query/Form/Table, tRPC client |
 | Backend | Express 5 + tRPC 11 + Drizzle + BetterAuth |
-| Design system | shadcn/ui (Base UI, Tailwind v4) — `@workspace/ui` |
+| Design system | shadcn/ui (Base UI, Tailwind v4) |
 | Database | Postgres (Docker locally, Neon in prod) |
 | Tooling | Biome 2 (format + lint), ESLint 10, TypeScript 6 |
 | Hosting | Vercel (frontend + Express serverless) + Neon Postgres |
 | AI | Vercel AI SDK v6 + Google Gemini 2.5 Flash (invoice extraction) |
 
+
+## Why this stack?
+
+Good patterns from the industry, shipped fast with AI assistance. I wired 23 domain-specific skills (tRPC, Drizzle, BetterAuth, shadcn, AI SDK...), MCPs, and spec-driven workflows into Claude Code so the tooling has real context about the project — not just code completion.
+
+I chose Vite + Express over Next.js: no SSR needed for this app, simpler mental model, and no coupling to a specific platform's framework.
+
+tRPC gives us end-to-end type safety, change a backend return type and the frontend knows immediately, no manual contract syncing.
+
+shadcn/ui gives you full ownership of every component, and its CLI plays well with AI tooling out of the box.
+
+## Bill lifecycle
+
+Every bill follows a strict state machine powered by XState v5:
+
+```
+  draft ──SUBMIT──▶ awaiting_approval ──APPROVE──▶ approved ──MARK_PAID──▶ paid
+    │                  │         ▲           │                              │
+    │                REJECT      │         EDIT                      CANCEL_PAYMENT
+    │                  │       EDIT          │                              │
+    │                  ▼         │           ▼                              │
+    │               rejected ────┘   awaiting_approval               approved
+    │                  │                                                   │
+    └──ARCHIVE─────────┴──────────────── archived ◀──────────ARCHIVE───────┘
+```
+
+The machine runs as a **pure transition function** on the server — no XState interpreter, no frontend dependency. You call `attemptTransition(currentStatus, event, derived)` and get back the next status or a rejection reason. That's it.
+
+Drizzle's `pgEnum` is the source of truth for status values; a compile-time parity check ensures the machine and the DB enum never drift apart. Guards like `isReady` block SUBMIT and APPROVE when required fields are missing or line-item amounts don't reconcile with the total. The backend exposes `availableEvents` on every bill response, so the frontend renders action buttons without ever importing the machine — it just reads what the server says is possible.
+
 ## AI invoice scanning
 
 Bills can be created by uploading an invoice image (PNG, JPEG, WebP) or PDF. The "Scan invoice" button on the New Bill page opens a dialog where users drag-and-drop a document. A vision-capable LLM (Gemini 2.5 Flash, free tier) extracts vendor name, invoice number, dates, line items, and amounts into structured output via the Vercel AI SDK's `generateText` + `Output.object`. The form is prefilled with the extracted data, vendor is fuzzy-matched against the existing vendors table, and the user can review/edit before saving.
-
-**How it works:**
-
-1. Frontend reads the file as base64 and sends it to `bills.extractFromInvoice` (tRPC mutation)
-2. Backend passes the image/PDF to Gemini via `@ai-sdk/google` with a Zod schema for structured output
-3. Extracted vendor name is matched against existing vendors (exact then substring)
-4. Result is returned to the frontend, which calls `form.setFieldValue()` for each field
 
 **Setup:** get a free API key from [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) and add it to `.env.local`:
 
@@ -51,68 +85,3 @@ GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
 
 **Sample invoices** for testing are in [`docs/invoices/`](./docs/invoices/) — 4 PNG variants (different vendors, line item counts, amounts) and 1 PDF with tax breakdown.
 
-## Structure
-
-```
-packages/
-  design-system/   shadcn primitives — package name @workspace/ui
-  frontend/        Vite + React app — @vamp-bills/frontend
-  backend/         Express + tRPC server — @vamp-bills/backend
-```
-
-### `@workspace/ui` components
-
-shadcn `base-luma` style on Base UI. Frontend imports primitives via
-`@workspace/ui/components/<name>`; both `components.json` files are wired so
-new components added in `packages/design-system/` are immediately available.
-
-Currently installed:
-
-- **Blocks:** `sidebar-08` (collapsible app shell + user menu), `login-01`
-  (email/password sign-in card)
-- **Primitives:** avatar, badge, breadcrumb, button (custom Base UI build —
-  do not overwrite), calendar, card, checkbox, collapsible, dialog,
-  dropdown-menu, field, input, label, popover, select, separator, sheet,
-  sidebar, skeleton, sonner, table, tabs, tooltip
-- **Hooks:** `use-mobile`
-
-To add more, run from `packages/design-system/`:
-
-```bash
-pnpm dlx shadcn@latest add <component-or-block>
-```
-
-Vendored shadcn files live under `src/components/**` and `src/hooks/use-mobile.ts`;
-those paths get relaxed Biome + ESLint rules so re-running the CLI doesn't
-churn lint config (see `biome.json` overrides + `packages/design-system/eslint.config.mjs`).
-
-## Getting started
-
-```bash
-pnpm install
-cp .env.example .env       # fill in BETTER_AUTH_SECRET (openssl rand -base64 32), GOOGLE_CLIENT_*
-pnpm db:up                 # start postgres on :5432
-pnpm auth:generate         # generate BetterAuth Drizzle schema (first run only)
-pnpm db:push               # sync schema to local pg
-pnpm dev                   # boot all packages in parallel (`pnpm -r --parallel`)
-```
-
-Frontend on `:5173` proxies `/trpc` and `/api/auth` to the backend on `:3000` (configured in `packages/frontend/vite.config.ts`).
-
-> **`INVALID_ORIGIN` on sign-in/sign-out?** Vite's proxy rewrites the `Origin` header, so Better Auth rejects it. Add the frontend and backend origins to `trustedOrigins` in `packages/backend/src/auth.ts` (e.g. `["http://localhost:3000", "http://localhost:5173"]`). If Vite picks a different port, add that too.
-
-## Scripts
-
-| Command | What it does |
-|---|---|
-| `pnpm dev` | Boot all packages in parallel (`pnpm -r --parallel dev`) |
-| `pnpm build` | Production build across packages |
-| `pnpm typecheck` | `tsc --noEmit` across packages |
-| `pnpm test` | Run vitest across packages (unit tests for pure-function modules; integration tests not yet added) |
-| `pnpm check` | Biome format + lint with auto-fix + ESLint per package |
-| `pnpm format` | Biome format only |
-| `pnpm lint` | Biome lint only |
-| `pnpm db:up` / `db:down` | docker-compose postgres |
-| `pnpm db:generate` | Drizzle Kit — emit SQL into `drizzle/` for PR review (use `--name <descriptive>`); **not applied to any DB during demo phase** |
-| `pnpm db:push` | Drizzle Kit — direct schema → DB sync against `DATABASE_URL`; canonical sync command for both local and Neon during demo phase |
-| `pnpm auth:generate` | BetterAuth CLI — regenerate `packages/backend/src/db/auth-schema.ts` from `auth.ts` |
