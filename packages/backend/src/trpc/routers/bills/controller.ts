@@ -13,6 +13,7 @@ import { type BillStatus, billStatusSchema } from "@vamp-bills/backend/domain/bi
 import { derivedReadiness } from "@vamp-bills/backend/domain/bill/transitions.ts";
 import { env } from "@vamp-bills/backend/env.ts";
 import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
+import { parse } from "csv-parse/sync";
 import { and, count, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -360,7 +361,6 @@ export async function importCsv({
   input: ImportCsvInput;
   ctx: AuthedCtx;
 }): Promise<{ rows: CsvRow[] } | { created: number; vendorsCreated: string[] }> {
-  const { parse } = await import("csv-parse/sync");
   const records = parse(input.csv, {
     columns: true,
     skip_empty_lines: true,
