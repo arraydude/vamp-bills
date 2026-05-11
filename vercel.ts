@@ -1,13 +1,4 @@
-import { readFileSync } from "node:fs";
-
 import type { VercelConfig } from "@vercel/config/v1";
-
-// Derive the .pnpm includeFiles glob from backend dependencies so
-// adding a new runtime dep doesn't require a separate config edit.
-// Scoped packages sharing an org are collapsed into `@scope+*` wildcards.
-const backendPkg = JSON.parse(readFileSync("packages/backend/package.json", "utf8")) as {
-  dependencies: Record<string, string>;
-};
 
 // NFT traces most deps through pnpm symlinks fine. These are the ones
 // it can't resolve — scoped packages and their transitive trees. Direct
