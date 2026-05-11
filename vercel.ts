@@ -23,7 +23,24 @@ const backendDeps = Object.keys(
 // and suffixes the .pnpm dir with `@<version>[_<peer-resolutions>]`. The
 // `@*` anchor is load-bearing: `pg*` would also match `pg-pool`,
 // `pg-connection-string`, etc. — `pg@*` only matches `pg@<version>...`.
-const pnpmEntries = backendDeps.map((d) => `${d.replace("/", "+")}@*`).join(",");
+//
+// Scoped packages with the same org (e.g. @ai-sdk/google, @ai-sdk/provider)
+// are collapsed into a single `@scope+*@*` wildcard to stay under Vercel's
+// 256-char includeFiles limit.
+const scopeGroups = new Map<string, boolean>();
+const entries: string[] = [];
+for (const dep of backendDeps) {
+  if (dep.startsWith("@")) {
+    const scope = dep.split("/")[0]!;
+    if (!scopeGroups.has(scope)) {
+      scopeGroups.set(scope, true);
+      entries.push(`${scope}+*@*`);
+    }
+  } else {
+    entries.push(`${dep}@*`);
+  }
+}
+const pnpmEntries = entries.join(",");
 
 export const config: VercelConfig = {
   installCommand: "pnpm install --frozen-lockfile",
