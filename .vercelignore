@@ -2,7 +2,7 @@
 
 # Repo docs / planning — not part of the runtime
 docs/
-scripts/
+scripts/*.py
 .claude/
 .agents/
 skills-lock.json
