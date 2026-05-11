@@ -112,10 +112,6 @@ export function isReady(bill: unknown): boolean {
   return readyBillSchema.safeParse(bill).success;
 }
 
-// Returns the list of top-level field paths that are blocking a "ready" parse.
-// Output is `string[]` (Zod issue paths) — UI consumers can switch on the
-// strings or narrow against `Object.keys(readyBillSchema.shape)` for an
-// exhaustive check.
 export function missingPaths(bill: unknown): string[] {
   const result = readyBillSchema.safeParse(bill);
   if (result.success) return [];
