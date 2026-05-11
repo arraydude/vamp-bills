@@ -10,7 +10,9 @@ import {
 } from "@vamp-bills/backend/domain/bill/schemas.ts";
 import { type BillStatus, billStatusSchema } from "@vamp-bills/backend/domain/bill/status.ts";
 import { derivedReadiness } from "@vamp-bills/backend/domain/bill/transitions.ts";
+import { env } from "@vamp-bills/backend/env.ts";
 import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
+import { parse } from "csv-parse/sync";
 import { and, count, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -102,6 +104,14 @@ export const markPaidInputShape = billIdInputShape.extend({
   reference: z.string().trim().optional(),
 });
 export type MarkPaidInput = z.infer<typeof markPaidInputShape>;
+
+export const extractFromInvoiceInputShape = z.object({
+  base64: z.string().min(1, "file content is required"),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "application/pdf"], {
+    message: "unsupported file type — use PNG, JPEG, WebP, or PDF",
+  }),
+});
+export type ExtractFromInvoiceInput = z.infer<typeof extractFromInvoiceInputShape>;
 
 export type BillsSummary = {
   paidTotal: number;
@@ -350,7 +360,6 @@ export async function importCsv({
   input: ImportCsvInput;
   ctx: AuthedCtx;
 }): Promise<{ rows: CsvRow[] } | { created: number; vendorsCreated: string[] }> {
-  const { parse } = await import("csv-parse/sync");
   const records = parse(input.csv, {
     columns: true,
     skip_empty_lines: true,
@@ -670,4 +679,77 @@ export async function markPaid({
   });
 
   return hydrate(result.bill, bundle.lineItems, result.payment, ctx.user.id, bundle.approverName);
+}
+
+// ─── AI invoice extraction ───────────────────────────────────────────────
+
+export type InvoiceExtractionResult = {
+  vendorId: string | null;
+  vendorName: string;
+  invoiceNumber: string;
+  description: string;
+  invoiceDate: string | null;
+  dueDate: string | null;
+  totalAmount: string;
+  lineItems: Array<{ description: string; amount: string }>;
+};
+
+export async function extractFromInvoice({
+  input,
+}: {
+  input: ExtractFromInvoiceInput;
+}): Promise<InvoiceExtractionResult> {
+  if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "AI extraction is not configured — set GOOGLE_GENERATIVE_AI_API_KEY",
+    });
+  }
+
+  // Dynamic import: the AI SDK + Google provider have deep transitive deps
+  // that pnpm's symlinked .pnpm store can't expose to Vercel's NFT tracer.
+  // Lazy-loading keeps them out of the startup import graph so auth/tRPC/
+  // bills CRUD work even when AI deps aren't bundled.
+  const { extractInvoiceFields } = await import("@vamp-bills/backend/ai/extract-invoice.ts");
+  const extracted = await extractInvoiceFields({
+    base64: input.base64,
+    mimeType: input.mimeType,
+  }).catch((err: unknown) => {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        err instanceof Error
+          ? `Invoice extraction failed: ${err.message}`
+          : "Invoice extraction failed",
+    });
+  });
+
+  const allVendors = await db.select({ id: vendors.id, name: vendors.name }).from(vendors);
+  const normalizedExtracted = extracted.vendorName.toLowerCase().trim();
+
+  let vendorId: string | null = null;
+  const exactMatch = allVendors.find((v) => v.name.toLowerCase().trim() === normalizedExtracted);
+  if (exactMatch) {
+    vendorId = exactMatch.id;
+  } else {
+    const fuzzyMatch = allVendors.find((v) => {
+      const vNorm = v.name.toLowerCase().trim();
+      return vNorm.includes(normalizedExtracted) || normalizedExtracted.includes(vNorm);
+    });
+    if (fuzzyMatch) vendorId = fuzzyMatch.id;
+  }
+
+  return {
+    vendorId,
+    vendorName: extracted.vendorName,
+    invoiceNumber: extracted.invoiceNumber,
+    description: extracted.description,
+    invoiceDate: extracted.invoiceDate,
+    dueDate: extracted.dueDate,
+    totalAmount: extracted.totalAmount,
+    lineItems: extracted.lineItems.map((li) => ({
+      description: li.description,
+      amount: li.amount,
+    })),
+  };
 }

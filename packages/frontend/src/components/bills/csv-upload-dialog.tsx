@@ -1,4 +1,4 @@
-import { IconAlertTriangle, IconUpload } from "@tabler/icons-react";
+import { IconAlertTriangle, IconFileSpreadsheet } from "@tabler/icons-react";
 import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
+import { Dropzone } from "@workspace/ui/components/dropzone";
 import { Spinner } from "@workspace/ui/components/spinner";
 import {
   Table,
@@ -70,17 +71,11 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
     },
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  function handleDrop(files: File[]) {
+    const file = files[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setError("Only .csv files are supported");
-      setPreview([]);
-      setStep("preview");
-      return;
-    }
-
+    setError(null);
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -89,7 +84,11 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
       previewCsv.mutate({ csv: text, dryRun: true });
     };
     reader.readAsText(file);
-  };
+  }
+
+  function handleDropRejected() {
+    setError("Only .csv files are supported");
+  }
 
   const isPending = previewCsv.isPending || importCsv.isPending;
 
@@ -124,14 +123,30 @@ export function CsvUploadDialog({ onOpenChange }: CsvUploadDialogProps) {
         </DialogHeader>
 
         {step === "upload" && (
-          <div className="flex flex-col items-center gap-4 py-8">
-            <IconUpload className="size-10 text-muted-foreground" />
-            <label className="cursor-pointer">
-              <input type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
-              <Button variant="outline" type="button" render={<span />}>
-                Choose CSV file
-              </Button>
-            </label>
+          <div className="flex flex-col gap-2">
+            <Dropzone
+              onDrop={handleDrop}
+              onDropRejected={handleDropRejected}
+              accept={{ "text/csv": [".csv"] }}
+              multiple={false}
+            >
+              <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
+                <IconFileSpreadsheet className="size-5" />
+              </div>
+              <p className="text-sm font-medium">
+                Drag & drop a CSV file, or{" "}
+                <span className="text-primary underline underline-offset-2">browse</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Columns: vendor, invoice_number, description, amount, invoice_date, due_date
+              </p>
+            </Dropzone>
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <IconAlertTriangle className="size-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
           </div>
         )}
 

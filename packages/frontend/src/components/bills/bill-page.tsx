@@ -1,3 +1,4 @@
+import { IconScan } from "@tabler/icons-react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
@@ -19,17 +20,28 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Textarea } from "@workspace/ui/components/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip";
 import { format } from "date-fns";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 
-import { useCreateBill, useUpdateBill } from "@/api/bills/mutations.ts";
+import {
+  type ExtractFromInvoiceResult,
+  useCreateBill,
+  useUpdateBill,
+} from "@/api/bills/mutations.ts";
 import type { HydratedBill } from "@/api/bills/queries.ts";
 import { useUsersList } from "@/api/users/queries.ts";
 import { useVendorsList } from "@/api/vendors/queries.ts";
 import { BillActions } from "@/components/bills/bill-actions.tsx";
 import { BillPageSkeleton } from "@/components/bills/bill-page-skeleton.tsx";
 import { DatePickerField } from "@/components/bills/date-picker-field.tsx";
+import { InvoiceUploadDialog } from "@/components/bills/invoice-upload-dialog.tsx";
 import { LineItemsField } from "@/components/bills/line-items-field.tsx";
 import { authClient } from "@/lib/auth-client.ts";
 
@@ -150,6 +162,26 @@ export function BillPage({ bill }: BillPageProps) {
   const isPending = createBill.isPending || updateBill.isPending;
   const totalAmount = useStore(form.store, (s) => computeTotal(s.values.lineItems));
 
+  const handleInvoiceExtracted = (data: ExtractFromInvoiceResult) => {
+    if (data.vendorId) form.setFieldValue("vendorId", data.vendorId);
+    if (data.invoiceNumber) form.setFieldValue("invoiceNumber", data.invoiceNumber);
+    if (data.description) form.setFieldValue("description", data.description);
+    if (data.invoiceDate) form.setFieldValue("invoiceDate", data.invoiceDate);
+    if (data.dueDate) form.setFieldValue("dueDate", data.dueDate);
+    if (data.lineItems.length > 0) {
+      form.setFieldValue(
+        "lineItems",
+        data.lineItems.map((li, i) => ({
+          description: li.description,
+          amount: li.amount,
+          position: i,
+        })),
+      );
+    }
+  };
+
+  const [scanOpen, setScanOpen] = useState(false);
+
   if (listsLoading) return <BillPageSkeleton />;
 
   return (
@@ -164,9 +196,40 @@ export function BillPage({ bill }: BillPageProps) {
             }}
           >
             <FieldGroup>
-              <h1 className="text-xl font-semibold tracking-tight">
-                {isNew ? "New bill" : `Bill ${bill.bill.invoiceNumber}`}
-              </h1>
+              <div className="flex items-center justify-between">
+                <h1 className="text-xl font-semibold tracking-tight">
+                  {isNew ? "New bill" : `Bill ${bill.bill.invoiceNumber}`}
+                </h1>
+                {isNew && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            onClick={() => setScanOpen(true)}
+                          />
+                        }
+                      >
+                        <IconScan className="size-4" />
+                        Scan invoice
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        Upload an invoice image or PDF and auto-fill the form using AI
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+
+              {scanOpen && (
+                <InvoiceUploadDialog
+                  onOpenChange={setScanOpen}
+                  onExtracted={handleInvoiceExtracted}
+                />
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <form.Field name="vendorId">
