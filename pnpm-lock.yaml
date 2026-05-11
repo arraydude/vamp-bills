@@ -59,6 +59,9 @@ importers:
       '@ai-sdk/google':
         specifier: ^3.0.71
         version: 3.0.71(zod@4.4.2)
+      '@ai-sdk/provider-utils':
+        specifier: ^4.0.27
+        version: 4.0.27(zod@4.4.2)
       '@trpc/server':
         specifier: ^11.17.0
         version: 11.17.0(typescript@6.0.3)
