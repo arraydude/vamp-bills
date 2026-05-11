@@ -17,6 +17,9 @@ export const billsRouter = router({
   importCsv: protectedProcedure
     .input(controller.importCsvInputShape)
     .mutation(controller.importCsv),
+  extractFromInvoice: protectedProcedure
+    .input(controller.extractFromInvoiceInputShape)
+    .mutation(controller.extractFromInvoice),
   update: protectedProcedure.input(controller.updateInputShape).mutation(controller.update),
 
   submit: protectedProcedure

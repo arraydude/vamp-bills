@@ -23,13 +23,18 @@ import { format } from "date-fns";
 import { useEffect } from "react";
 import { z } from "zod";
 
-import { useCreateBill, useUpdateBill } from "@/api/bills/mutations.ts";
+import {
+  type ExtractFromInvoiceResult,
+  useCreateBill,
+  useUpdateBill,
+} from "@/api/bills/mutations.ts";
 import type { HydratedBill } from "@/api/bills/queries.ts";
 import { useUsersList } from "@/api/users/queries.ts";
 import { useVendorsList } from "@/api/vendors/queries.ts";
 import { BillActions } from "@/components/bills/bill-actions.tsx";
 import { BillPageSkeleton } from "@/components/bills/bill-page-skeleton.tsx";
 import { DatePickerField } from "@/components/bills/date-picker-field.tsx";
+import { InvoiceUpload } from "@/components/bills/invoice-upload.tsx";
 import { LineItemsField } from "@/components/bills/line-items-field.tsx";
 import { authClient } from "@/lib/auth-client.ts";
 
@@ -150,6 +155,24 @@ export function BillPage({ bill }: BillPageProps) {
   const isPending = createBill.isPending || updateBill.isPending;
   const totalAmount = useStore(form.store, (s) => computeTotal(s.values.lineItems));
 
+  const handleInvoiceExtracted = (data: ExtractFromInvoiceResult) => {
+    if (data.vendorId) form.setFieldValue("vendorId", data.vendorId);
+    if (data.invoiceNumber) form.setFieldValue("invoiceNumber", data.invoiceNumber);
+    if (data.description) form.setFieldValue("description", data.description);
+    if (data.invoiceDate) form.setFieldValue("invoiceDate", data.invoiceDate);
+    if (data.dueDate) form.setFieldValue("dueDate", data.dueDate);
+    if (data.lineItems.length > 0) {
+      form.setFieldValue(
+        "lineItems",
+        data.lineItems.map((li, i) => ({
+          description: li.description,
+          amount: li.amount,
+          position: i,
+        })),
+      );
+    }
+  };
+
   if (listsLoading) return <BillPageSkeleton />;
 
   return (
@@ -167,6 +190,8 @@ export function BillPage({ bill }: BillPageProps) {
               <h1 className="text-xl font-semibold tracking-tight">
                 {isNew ? "New bill" : `Bill ${bill.bill.invoiceNumber}`}
               </h1>
+
+              {isNew && <InvoiceUpload onExtracted={handleInvoiceExtracted} disabled={!editable} />}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <form.Field name="vendorId">

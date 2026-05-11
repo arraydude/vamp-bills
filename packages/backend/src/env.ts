@@ -25,6 +25,7 @@ const schema = z.object({
   BETTER_AUTH_URL: z.string().url().optional(),
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().default(""),
   PORT: z.coerce.number().int().positive().default(3000),
 });
 

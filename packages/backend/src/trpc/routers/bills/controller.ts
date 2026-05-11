@@ -103,6 +103,14 @@ export const markPaidInputShape = billIdInputShape.extend({
 });
 export type MarkPaidInput = z.infer<typeof markPaidInputShape>;
 
+export const extractFromInvoiceInputShape = z.object({
+  base64: z.string().min(1, "file content is required"),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "application/pdf"], {
+    message: "unsupported file type — use PNG, JPEG, WebP, or PDF",
+  }),
+});
+export type ExtractFromInvoiceInput = z.infer<typeof extractFromInvoiceInputShape>;
+
 export type BillsSummary = {
   paidTotal: number;
   paidCount: number;
@@ -670,4 +678,74 @@ export async function markPaid({
   });
 
   return hydrate(result.bill, bundle.lineItems, result.payment, ctx.user.id, bundle.approverName);
+}
+
+// ─── AI invoice extraction ───────────────────────────────────────────────
+
+export type InvoiceExtractionResult = {
+  vendorId: string | null;
+  vendorName: string;
+  invoiceNumber: string;
+  description: string;
+  invoiceDate: string | null;
+  dueDate: string | null;
+  totalAmount: string;
+  lineItems: Array<{ description: string; amount: string }>;
+};
+
+export async function extractFromInvoice({
+  input,
+}: {
+  input: ExtractFromInvoiceInput;
+}): Promise<InvoiceExtractionResult> {
+  const { env } = await import("@vamp-bills/backend/env.ts");
+  if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "AI extraction is not configured — set GOOGLE_GENERATIVE_AI_API_KEY",
+    });
+  }
+
+  const { extractInvoiceFields } = await import("@vamp-bills/backend/ai/extract-invoice.ts");
+  const extracted = await extractInvoiceFields({
+    base64: input.base64,
+    mimeType: input.mimeType,
+  }).catch((err: unknown) => {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        err instanceof Error
+          ? `Invoice extraction failed: ${err.message}`
+          : "Invoice extraction failed",
+    });
+  });
+
+  const allVendors = await db.select({ id: vendors.id, name: vendors.name }).from(vendors);
+  const normalizedExtracted = extracted.vendorName.toLowerCase().trim();
+
+  let vendorId: string | null = null;
+  const exactMatch = allVendors.find((v) => v.name.toLowerCase().trim() === normalizedExtracted);
+  if (exactMatch) {
+    vendorId = exactMatch.id;
+  } else {
+    const fuzzyMatch = allVendors.find((v) => {
+      const vNorm = v.name.toLowerCase().trim();
+      return vNorm.includes(normalizedExtracted) || normalizedExtracted.includes(vNorm);
+    });
+    if (fuzzyMatch) vendorId = fuzzyMatch.id;
+  }
+
+  return {
+    vendorId,
+    vendorName: extracted.vendorName,
+    invoiceNumber: extracted.invoiceNumber,
+    description: extracted.description,
+    invoiceDate: extracted.invoiceDate,
+    dueDate: extracted.dueDate,
+    totalAmount: extracted.totalAmount,
+    lineItems: extracted.lineItems.map((li) => ({
+      description: li.description,
+      amount: li.amount,
+    })),
+  };
 }
