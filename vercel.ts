@@ -53,10 +53,10 @@ export const config: VercelConfig = {
   ],
   functions: {
     "api/index.ts": {
-      // Identical shape to the brittle hand-listed glob in `vercel.json`
-      // (commit ebe5723), but generated. Adding a runtime dep to backend
-      // flows through here on the next deploy with no edit.
-      includeFiles: `{packages/backend/{src,drizzle,node_modules}/**,node_modules/.pnpm/{${pnpmEntries}}/node_modules/**}`,
+      includeFiles: [
+        "packages/backend/{src,drizzle,node_modules}/**",
+        `node_modules/.pnpm/{${pnpmEntries}}/node_modules/**`,
+      ],
     },
   },
 };
