@@ -30,6 +30,26 @@ The two commands actually used:
 | Database | Postgres (Docker locally, Neon in prod) |
 | Tooling | Biome 2 (format + lint), ESLint 10, TypeScript 6 |
 | Hosting | Vercel (frontend + Express serverless) + Neon Postgres |
+| AI | Vercel AI SDK v6 + Google Gemini 2.5 Flash (invoice extraction) |
+
+## AI invoice scanning
+
+Bills can be created by uploading an invoice image (PNG, JPEG, WebP) or PDF. The "Scan invoice" button on the New Bill page opens a dialog where users drag-and-drop a document. A vision-capable LLM (Gemini 2.5 Flash, free tier) extracts vendor name, invoice number, dates, line items, and amounts into structured output via the Vercel AI SDK's `generateText` + `Output.object`. The form is prefilled with the extracted data, vendor is fuzzy-matched against the existing vendors table, and the user can review/edit before saving.
+
+**How it works:**
+
+1. Frontend reads the file as base64 and sends it to `bills.extractFromInvoice` (tRPC mutation)
+2. Backend passes the image/PDF to Gemini via `@ai-sdk/google` with a Zod schema for structured output
+3. Extracted vendor name is matched against existing vendors (exact then substring)
+4. Result is returned to the frontend, which calls `form.setFieldValue()` for each field
+
+**Setup:** get a free API key from [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) and add it to `.env.local`:
+
+```
+GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
+```
+
+**Sample invoices** for testing are in [`docs/invoices/`](./docs/invoices/) — 4 PNG variants (different vendors, line item counts, amounts) and 1 PDF with tax breakdown.
 
 ## Structure
 
