@@ -1,4 +1,33 @@
+import { readFileSync } from "node:fs";
+
 import type { VercelConfig } from "@vercel/config/v1";
+
+// Derive the .pnpm includeFiles glob from backend dependencies so
+// adding a new runtime dep doesn't require a separate config edit.
+// Scoped packages sharing an org are collapsed into `@scope+*` wildcards.
+const backendPkg = JSON.parse(readFileSync("packages/backend/package.json", "utf8")) as {
+  dependencies: Record<string, string>;
+};
+
+// NFT traces most deps through pnpm symlinks fine. These are the ones
+// it can't resolve — scoped packages and their transitive trees. Direct
+// unscoped deps (express, cors, pg, zod, etc.) are traced automatically.
+// When a new scoped dep is added and Vercel fails with ERR_MODULE_NOT_FOUND,
+// add its scope here.
+const pnpmGlob = [
+  "@ai-sdk+*",
+  "@opentelemetry+*",
+  "@standard-schema+*",
+  "@trpc+*",
+  "@vercel+*",
+  "ai",
+  "better-auth",
+  "drizzle-orm",
+  "drizzle-zod",
+  "eventsource-parser",
+  "json-schema",
+  "xstate",
+].join(",");
 
 export const config: VercelConfig = {
   installCommand: "pnpm install --frozen-lockfile",
@@ -11,8 +40,7 @@ export const config: VercelConfig = {
   ],
   functions: {
     "api/index.ts": {
-      includeFiles:
-        "{packages/backend/{src,drizzle,node_modules}/**,node_modules/.pnpm/*/node_modules/**}",
+      includeFiles: `{packages/backend/{src,drizzle,node_modules}/**,node_modules/.pnpm/{${pnpmGlob}}*/node_modules/**}`,
     },
   },
 };
