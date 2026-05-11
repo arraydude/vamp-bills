@@ -20,24 +20,21 @@ const backendDeps = Object.keys(
 );
 
 // pnpm encodes scoped names with `+` (e.g. `@trpc/server` → `@trpc+server`)
-// and suffixes the .pnpm dir with `@<version>[_<peer-resolutions>]`. The
-// `@*` anchor is load-bearing: `pg*` would also match `pg-pool`,
-// `pg-connection-string`, etc. — `pg@*` only matches `pg@<version>...`.
-//
-// Scoped packages with the same org (e.g. @ai-sdk/google, @ai-sdk/provider)
-// are collapsed into a single `@scope+*@*` wildcard to stay under Vercel's
-// 256-char includeFiles limit.
-const scopeGroups = new Map<string, boolean>();
+// and suffixes the .pnpm dir with `@<version>[_<peer-resolutions>]`.
+// Scoped packages sharing an org are collapsed into `@scope+*` wildcards
+// to stay under Vercel's 256-char includeFiles limit. The `}*/` glob
+// (instead of `}@*/`) matches the version suffix without the extra chars.
+const seen = new Set<string>();
 const entries: string[] = [];
 for (const dep of backendDeps) {
   if (dep.startsWith("@")) {
-    const scope = dep.split("/")[0]!;
-    if (!scopeGroups.has(scope)) {
-      scopeGroups.set(scope, true);
-      entries.push(`${scope}+*@*`);
+    const scope = dep.split("/")[0];
+    if (scope && !seen.has(scope)) {
+      seen.add(scope);
+      entries.push(`${scope}+*`);
     }
   } else {
-    entries.push(`${dep}@*`);
+    entries.push(dep);
   }
 }
 const pnpmEntries = entries.join(",");
@@ -53,10 +50,7 @@ export const config: VercelConfig = {
   ],
   functions: {
     "api/index.ts": {
-      includeFiles: [
-        "packages/backend/{src,drizzle,node_modules}/**",
-        `node_modules/.pnpm/{${pnpmEntries}}/node_modules/**`,
-      ],
+      includeFiles: `{packages/backend/{src,drizzle,node_modules}/**,node_modules/.pnpm/{${pnpmEntries}}*/node_modules/**}`,
     },
   },
 };
