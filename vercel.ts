@@ -29,7 +29,7 @@ const pnpmEntries = entries.join(",");
 
 export const config: VercelConfig = {
   installCommand: "pnpm install --frozen-lockfile",
-  buildCommand: "cd packages/frontend && npx vite build",
+  buildCommand: "pnpm --filter @vamp-bills/frontend build",
   outputDirectory: "packages/frontend/dist",
   rewrites: [
     { source: "/trpc/(.*)", destination: "/api/index" },
