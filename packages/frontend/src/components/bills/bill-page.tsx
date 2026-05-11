@@ -1,3 +1,4 @@
+import { IconScan } from "@tabler/icons-react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
@@ -19,8 +20,14 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Textarea } from "@workspace/ui/components/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip";
 import { format } from "date-fns";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 
 import {
@@ -34,7 +41,7 @@ import { useVendorsList } from "@/api/vendors/queries.ts";
 import { BillActions } from "@/components/bills/bill-actions.tsx";
 import { BillPageSkeleton } from "@/components/bills/bill-page-skeleton.tsx";
 import { DatePickerField } from "@/components/bills/date-picker-field.tsx";
-import { InvoiceUpload } from "@/components/bills/invoice-upload.tsx";
+import { InvoiceUploadDialog } from "@/components/bills/invoice-upload-dialog.tsx";
 import { LineItemsField } from "@/components/bills/line-items-field.tsx";
 import { authClient } from "@/lib/auth-client.ts";
 
@@ -173,6 +180,8 @@ export function BillPage({ bill }: BillPageProps) {
     }
   };
 
+  const [scanOpen, setScanOpen] = useState(false);
+
   if (listsLoading) return <BillPageSkeleton />;
 
   return (
@@ -187,11 +196,40 @@ export function BillPage({ bill }: BillPageProps) {
             }}
           >
             <FieldGroup>
-              <h1 className="text-xl font-semibold tracking-tight">
-                {isNew ? "New bill" : `Bill ${bill.bill.invoiceNumber}`}
-              </h1>
+              <div className="flex items-center justify-between">
+                <h1 className="text-xl font-semibold tracking-tight">
+                  {isNew ? "New bill" : `Bill ${bill.bill.invoiceNumber}`}
+                </h1>
+                {isNew && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            onClick={() => setScanOpen(true)}
+                          />
+                        }
+                      >
+                        <IconScan className="size-4" />
+                        Scan invoice
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        Upload an invoice image or PDF and auto-fill the form using AI
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
 
-              {isNew && <InvoiceUpload onExtracted={handleInvoiceExtracted} disabled={!editable} />}
+              {scanOpen && (
+                <InvoiceUploadDialog
+                  onOpenChange={setScanOpen}
+                  onExtracted={handleInvoiceExtracted}
+                />
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <form.Field name="vendorId">
