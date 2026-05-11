@@ -46,7 +46,7 @@ Other things to poke at:
 
 ## Why this stack?
 
-Good patterns from the industry, shipped fast with AI assistance. I wired 23 domain-specific skills (tRPC, Drizzle, BetterAuth, shadcn, AI SDK...), MCPs, and spec-driven workflows into Claude Code so the tooling has real context about the project — not just code completion.
+Well stablished patterns from the industry, shipped fast with AI assistance. I wired 23 domain-specific skills (tRPC, Drizzle, BetterAuth, shadcn, AI SDK...), MCPs, and spec-driven workflows into Claude Code so the tooling has real context about the project — not just code completion.
 
 I chose Vite + Express over Next.js: no SSR needed for this app, simpler mental model, and no coupling to a specific platform's framework.
 
