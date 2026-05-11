@@ -17,20 +17,24 @@ import { and, count, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
-  type AuthedCtx,
   assertApprover,
   assertApproverExists,
   assertCreator,
   assertVendorExists,
-  type BillRow,
-  type Bundle,
   fetchApproverName,
-  type HydratedBill,
   hydrate,
   loadBundle,
-  type PaymentRow,
   transitionOrThrow,
 } from "./helpers.ts";
+import type {
+  AuthedCtx,
+  BillRow,
+  BillsSummary,
+  Bundle,
+  HydratedBill,
+  InvoiceExtractionResult,
+  PaymentRow,
+} from "./types.ts";
 
 // Zod input schemas live here next to the handlers (they're load-bearing for
 // the public API contract); routes.ts wires them onto procedures.
@@ -112,18 +116,6 @@ export const extractFromInvoiceInputShape = z.object({
   }),
 });
 export type ExtractFromInvoiceInput = z.infer<typeof extractFromInvoiceInputShape>;
-
-export type BillsSummary = {
-  paidTotal: number;
-  paidCount: number;
-  outstandingTotal: number;
-  outstandingCount: number;
-  pendingApprovalCount: number;
-  overdueTotal: number;
-  overdueCount: number;
-  avgAmount: number;
-  totalCount: number;
-};
 
 // ─── non-lifecycle handlers ────────────────────────────────────────────────
 
@@ -682,17 +674,6 @@ export async function markPaid({
 }
 
 // ─── AI invoice extraction ───────────────────────────────────────────────
-
-export type InvoiceExtractionResult = {
-  vendorId: string | null;
-  vendorName: string;
-  invoiceNumber: string;
-  description: string;
-  invoiceDate: string | null;
-  dueDate: string | null;
-  totalAmount: string;
-  lineItems: Array<{ description: string; amount: string }>;
-};
 
 export async function extractFromInvoice({
   input,

@@ -122,6 +122,12 @@ export const readyBillSchema = insertBillSchema
 
 export type ReadyBill = z.infer<typeof readyBillSchema>;
 
+export type ReadinessLineItem = {
+  description: string;
+  amount: string;
+  position: number;
+};
+
 export function isReady(bill: unknown): boolean {
   return readyBillSchema.safeParse(bill).success;
 }
