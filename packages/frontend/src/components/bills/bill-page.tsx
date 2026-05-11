@@ -1,6 +1,7 @@
 import { IconScan } from "@tabler/icons-react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
+import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
 import {
   Field,
@@ -229,6 +230,14 @@ export function BillPage({ bill }: BillPageProps) {
                   onOpenChange={setScanOpen}
                   onExtracted={handleInvoiceExtracted}
                 />
+              )}
+
+              {!isNew && bill.bill.createdBy !== userId && bill.bill.approverId !== userId && (
+                <Alert>
+                  <AlertDescription>
+                    Only creators or approvers can make changes to this bill.
+                  </AlertDescription>
+                </Alert>
               )}
 
               <div className="grid gap-4 sm:grid-cols-2">

@@ -224,11 +224,17 @@ describe("availableEvents — what the UI button row should show (role-filtered)
     expect(availableEvents("archived", READY, CREATOR)).toEqual([]);
   });
 
-  it("any state with neither role: nothing (except approved → MARK_PAID)", () => {
-    for (const state of ["draft", "awaiting_approval", "rejected", "paid", "archived"] as const) {
+  it("any state with neither role: nothing", () => {
+    for (const state of [
+      "draft",
+      "awaiting_approval",
+      "approved",
+      "rejected",
+      "paid",
+      "archived",
+    ] as const) {
       expect(availableEvents(state, READY, NEITHER)).toEqual([]);
     }
-    expect(availableEvents("approved", READY, NEITHER)).toEqual(["MARK_PAID"]);
   });
 });
 
