@@ -46,6 +46,17 @@ Other things to poke at:
 | AI | Vercel AI SDK v6 + Google Gemini 2.5 Flash (invoice extraction) |
 
 
+## Folder structure
+
+```
+packages/
+  backend/       Express + tRPC API, Drizzle schema, domain logic (state machine, validators)
+  frontend/      Vite + React SPA, TanStack Router/Query/Form, tRPC client
+  design-system/ shadcn/ui components, Tailwind theme, shared UI primitives
+api/             Vercel serverless entry point (proxies to Express)
+docs/            Setup guide, MVP scope, contributing guide, sample invoices
+```
+
 ## Why this stack?
 
 Well established patterns from the industry, shipped fast with AI assistance. I wired domain-specific skills (tRPC, Drizzle, BetterAuth, shadcn, AI SDK...), MCPs, and spec-driven workflows.
