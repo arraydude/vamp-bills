@@ -5,6 +5,8 @@ node_modules/
 # Build outputs
 dist/
 build/
+api/_bundle.mjs
+api/_bundle.mjs.map
 .turbo/
 .cache/
 coverage/
