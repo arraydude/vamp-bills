@@ -3,7 +3,7 @@ import { bills, payments } from "@vamp-bills/backend/db/app-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
 import { desc, eq } from "drizzle-orm";
 
-import type { ListForBillInput } from "./schemas.ts";
+import type { ListForBillInput } from "./schemas";
 
 export async function listForBill({ input }: { input: ListForBillInput }) {
   const [bill] = await db

@@ -14,7 +14,7 @@ import {
 import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
 import { asc, desc, eq } from "drizzle-orm";
 
-import type { BillLineItemRow, BillRow, Bundle, HydratedBill, PaymentRow } from "./types.ts";
+import type { BillLineItemRow, BillRow, Bundle, HydratedBill, PaymentRow } from "./types";
 
 export function assertCreator(bill: BillRow, userId: string): void {
   if (bill.createdBy !== userId) {
