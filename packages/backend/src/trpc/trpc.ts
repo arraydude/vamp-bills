@@ -2,8 +2,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import type { DefaultErrorShape } from "@trpc/server/unstable-core-do-not-import";
 import { ZodError } from "zod";
 
-import type { Context } from "./context.ts";
-import { GuardFailedError } from "./errors.ts";
+import type { Context } from "./context";
+import { GuardFailedError } from "./errors";
 
 const isDev = process.env.NODE_ENV === "development";
 

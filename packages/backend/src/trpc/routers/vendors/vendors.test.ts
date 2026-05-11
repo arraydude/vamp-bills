@@ -3,7 +3,7 @@ import { createContextInner } from "@vamp-bills/backend/trpc/context.ts";
 import { createCallerFactory } from "@vamp-bills/backend/trpc/trpc.ts";
 import { describe, expect, test, vi } from "vitest";
 
-import { vendorsRouter } from "./routes.ts";
+import { vendorsRouter } from "./routes";
 
 // Stub the db module so the auth-gate tests don't depend on a live Postgres
 // pool being reachable during module init. Mirrors `bills.test.ts`.

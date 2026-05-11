@@ -1,39 +1,38 @@
 import { protectedProcedure, router } from "@vamp-bills/backend/trpc/trpc.ts";
 
-import * as controller from "./controller.ts";
+import { extractFromInvoice } from "./extract-invoice";
+import { lifecycle, sideEffects as lifecycleSideEffects, markPaid } from "./lifecycle";
+import { create, createBulk, importCsv, update } from "./mutations";
+import { getById, list, summary } from "./queries";
+import {
+  billIdInputShape,
+  createBulkInputShape,
+  createInputShape,
+  extractFromInvoiceInputShape,
+  importCsvInputShape,
+  listInputShape,
+  markPaidInputShape,
+  updateInputShape,
+} from "./schemas";
 
 export const billsRouter = router({
-  summary: protectedProcedure.query(controller.summary),
-  list: protectedProcedure.input(controller.listInputShape.optional()).query(controller.list),
-  getById: protectedProcedure.input(controller.billIdInputShape).query(controller.getById),
-  create: protectedProcedure.input(controller.createInputShape).mutation(controller.create),
-  createBulk: protectedProcedure
-    .input(controller.createBulkInputShape)
-    .mutation(controller.createBulk),
-  importCsv: protectedProcedure
-    .input(controller.importCsvInputShape)
-    .mutation(controller.importCsv),
+  summary: protectedProcedure.query(summary),
+  list: protectedProcedure.input(listInputShape.optional()).query(list),
+  getById: protectedProcedure.input(billIdInputShape).query(getById),
+  create: protectedProcedure.input(createInputShape).mutation(create),
+  createBulk: protectedProcedure.input(createBulkInputShape).mutation(createBulk),
+  importCsv: protectedProcedure.input(importCsvInputShape).mutation(importCsv),
   extractFromInvoice: protectedProcedure
-    .input(controller.extractFromInvoiceInputShape)
-    .mutation(controller.extractFromInvoice),
-  update: protectedProcedure.input(controller.updateInputShape).mutation(controller.update),
+    .input(extractFromInvoiceInputShape)
+    .mutation(extractFromInvoice),
+  update: protectedProcedure.input(updateInputShape).mutation(update),
 
-  submit: protectedProcedure
-    .input(controller.billIdInputShape)
-    .mutation(controller.lifecycle("SUBMIT", "creator")),
-  approve: protectedProcedure
-    .input(controller.billIdInputShape)
-    .mutation(controller.lifecycle("APPROVE", "approver")),
-  reject: protectedProcedure
-    .input(controller.billIdInputShape)
-    .mutation(controller.lifecycle("REJECT", "approver")),
-  markPaid: protectedProcedure.input(controller.markPaidInputShape).mutation(controller.markPaid),
+  submit: protectedProcedure.input(billIdInputShape).mutation(lifecycle("SUBMIT", "creator")),
+  approve: protectedProcedure.input(billIdInputShape).mutation(lifecycle("APPROVE", "approver")),
+  reject: protectedProcedure.input(billIdInputShape).mutation(lifecycle("REJECT", "approver")),
+  markPaid: protectedProcedure.input(markPaidInputShape).mutation(markPaid),
   cancelPayment: protectedProcedure
-    .input(controller.billIdInputShape)
-    .mutation(
-      controller.lifecycle("CANCEL_PAYMENT", "creator", controller.sideEffects.cancelLatestPayment),
-    ),
-  archive: protectedProcedure
-    .input(controller.billIdInputShape)
-    .mutation(controller.lifecycle("ARCHIVE", "creator")),
+    .input(billIdInputShape)
+    .mutation(lifecycle("CANCEL_PAYMENT", "creator", lifecycleSideEffects.cancelLatestPayment)),
+  archive: protectedProcedure.input(billIdInputShape).mutation(lifecycle("ARCHIVE", "creator")),
 });

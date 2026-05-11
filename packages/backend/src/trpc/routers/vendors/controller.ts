@@ -3,7 +3,7 @@ import { vendors } from "@vamp-bills/backend/db/app-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
 import { asc, eq } from "drizzle-orm";
 
-import type { CreateInput, UpdateInput, VendorIdInput } from "./schemas.ts";
+import type { CreateInput, UpdateInput, VendorIdInput } from "./schemas";
 
 export async function list() {
   return db.select().from(vendors).orderBy(asc(vendors.name));

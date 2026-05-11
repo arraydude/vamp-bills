@@ -3,7 +3,7 @@ import { createContextInner } from "@vamp-bills/backend/trpc/context.ts";
 import { createCallerFactory } from "@vamp-bills/backend/trpc/trpc.ts";
 import { describe, expect, test, vi } from "vitest";
 
-import { paymentsRouter } from "./routes.ts";
+import { paymentsRouter } from "./routes";
 
 // Mirror the bills/vendors test posture: stub `db/client.ts` so importing
 // the controller doesn't try to open a Postgres connection during module
