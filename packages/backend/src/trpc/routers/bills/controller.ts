@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import { extractInvoiceFields } from "@vamp-bills/backend/ai/extract-invoice.ts";
 import { billLineItems, bills, payments, vendors } from "@vamp-bills/backend/db/app-schema.ts";
 import { user } from "@vamp-bills/backend/db/auth-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
@@ -707,6 +706,11 @@ export async function extractFromInvoice({
     });
   }
 
+  // Dynamic import: the AI SDK + Google provider have deep transitive deps
+  // that pnpm's symlinked .pnpm store can't expose to Vercel's NFT tracer.
+  // Lazy-loading keeps them out of the startup import graph so auth/tRPC/
+  // bills CRUD work even when AI deps aren't bundled.
+  const { extractInvoiceFields } = await import("@vamp-bills/backend/ai/extract-invoice.ts");
   const extracted = await extractInvoiceFields({
     base64: input.base64,
     mimeType: input.mimeType,
