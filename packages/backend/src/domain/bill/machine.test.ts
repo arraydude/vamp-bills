@@ -208,8 +208,8 @@ describe("availableEvents — what the UI button row should show (role-filtered)
     expect(availableEvents("approved", READY, CREATOR)).toEqual(["MARK_PAID", "ARCHIVE", "EDIT"]);
   });
 
-  it("approved as approver: nothing — approver's job is done", () => {
-    expect(availableEvents("approved", READY, APPROVER)).toEqual([]);
+  it("approved as approver: MARK_PAID — any authed user can pay", () => {
+    expect(availableEvents("approved", READY, APPROVER)).toEqual(["MARK_PAID"]);
   });
 
   it("rejected as creator: EDIT + ARCHIVE (spec ribbon: 'Edit & resubmit' before 'Archive')", () => {
@@ -224,17 +224,11 @@ describe("availableEvents — what the UI button row should show (role-filtered)
     expect(availableEvents("archived", READY, CREATOR)).toEqual([]);
   });
 
-  it("any state with neither role: nothing", () => {
-    for (const state of [
-      "draft",
-      "awaiting_approval",
-      "approved",
-      "rejected",
-      "paid",
-      "archived",
-    ] as const) {
+  it("any state with neither role: nothing (except approved → MARK_PAID)", () => {
+    for (const state of ["draft", "awaiting_approval", "rejected", "paid", "archived"] as const) {
       expect(availableEvents(state, READY, NEITHER)).toEqual([]);
     }
+    expect(availableEvents("approved", READY, NEITHER)).toEqual(["MARK_PAID"]);
   });
 });
 

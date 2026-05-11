@@ -102,7 +102,6 @@ export async function markPaid({
   ctx: AuthedCtx;
 }): Promise<HydratedBill> {
   const bundle = await loadBundle(input.id);
-  assertCreator(bundle.bill, ctx.user.id);
   const nextStatus = transitionOrThrow(bundle.bill.status, { type: "MARK_PAID" }, bundle);
 
   const result = await db.transaction(async (tx) => {

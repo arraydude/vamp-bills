@@ -29,11 +29,11 @@ const ACTION_ORDER: Record<BillStatus, readonly BillEventType[]> = {
 type ActorRole = "creator" | "approver";
 type ActorRoles = ReadonlySet<ActorRole>;
 
-const EVENT_ALLOWED_BY_ROLE: Record<BillEventType, ReadonlySet<ActorRole>> = {
+const EVENT_ALLOWED_BY_ROLE: Record<BillEventType, ReadonlySet<ActorRole> | null> = {
   SUBMIT: new Set(["creator"]),
   APPROVE: new Set(["approver"]),
   REJECT: new Set(["approver"]),
-  MARK_PAID: new Set(["creator"]),
+  MARK_PAID: null,
   CANCEL_PAYMENT: new Set(["creator"]),
   ARCHIVE: new Set(["creator"]),
   EDIT: new Set(["creator"]),
@@ -81,14 +81,16 @@ export function availableEvents(
 ): BillEventType[] {
   return ACTION_ORDER[current].filter((type) => {
     const allowed = EVENT_ALLOWED_BY_ROLE[type];
-    let canAct = false;
-    for (const role of roles) {
-      if (allowed.has(role)) {
-        canAct = true;
-        break;
+    if (allowed !== null) {
+      let canAct = false;
+      for (const role of roles) {
+        if (allowed.has(role)) {
+          canAct = true;
+          break;
+        }
       }
+      if (!canAct) return false;
     }
-    if (!canAct) return false;
     const result = attemptTransition(current, { type } as BillEvent, derived);
     return result.ok;
   });
