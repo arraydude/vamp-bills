@@ -1,10 +1,11 @@
 import { protectedProcedure, router } from "@vamp-bills/backend/trpc/trpc.ts";
 
-import * as controller from "./controller.ts";
+import { create, getById, list, update } from "./controller";
+import { createInputShape, updateInputShape, vendorIdInputShape } from "./schemas";
 
 export const vendorsRouter = router({
-  list: protectedProcedure.query(controller.list),
-  getById: protectedProcedure.input(controller.vendorIdInputShape).query(controller.getById),
-  create: protectedProcedure.input(controller.createInputShape).mutation(controller.create),
-  update: protectedProcedure.input(controller.updateInputShape).mutation(controller.update),
+  list: protectedProcedure.query(list),
+  getById: protectedProcedure.input(vendorIdInputShape).query(getById),
+  create: protectedProcedure.input(createInputShape).mutation(create),
+  update: protectedProcedure.input(updateInputShape).mutation(update),
 });

@@ -10,7 +10,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
-import { user } from "./auth-schema.ts";
+import { user } from "./auth-schema";
 
 export const billStatusEnum = pgEnum("bill_status", [
   "draft",

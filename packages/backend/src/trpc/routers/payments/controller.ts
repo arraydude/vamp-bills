@@ -2,16 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { bills, payments } from "@vamp-bills/backend/db/app-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
 import { desc, eq } from "drizzle-orm";
-import { z } from "zod";
 
-export const listForBillInputShape = z.object({ billId: z.string().min(1) });
-export type ListForBillInput = z.infer<typeof listForBillInputShape>;
+import type { ListForBillInput } from "./schemas";
 
 export async function listForBill({ input }: { input: ListForBillInput }) {
-  // Pre-check the parent bill exists so a typo'd / unknown billId surfaces
-  // as 404 instead of a silent empty array (which is otherwise
-  // indistinguishable from "this bill exists but has no payments yet").
-  // Matches the NOT_FOUND posture the rest of the router takes for bad ids.
   const [bill] = await db
     .select({ id: bills.id })
     .from(bills)

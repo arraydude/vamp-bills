@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { billLineItems, bills, payments, vendors } from "@vamp-bills/backend/db/app-schema.ts";
 import { user } from "@vamp-bills/backend/db/auth-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
+import type { ReadinessLineItem } from "@vamp-bills/backend/domain/bill/schemas.ts";
 import { missingPaths } from "@vamp-bills/backend/domain/bill/schemas.ts";
 import type { BillStatus } from "@vamp-bills/backend/domain/bill/status.ts";
 import {
@@ -10,43 +11,11 @@ import {
   availableEvents,
   derivedReadiness,
 } from "@vamp-bills/backend/domain/bill/transitions.ts";
-import type { Context } from "@vamp-bills/backend/trpc/context.ts";
 import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
 import { asc, desc, eq } from "drizzle-orm";
 
-// Narrowed context shape inside `protectedProcedure` — used by controller
-// handlers that import this module directly. Mirrors the narrowing tRPC
-// performs in `trpc.ts` so handlers in `controller.ts` get `ctx.user.id`
-// without needing to import tRPC's procedure-builder type machinery.
-export type AuthedCtx = Omit<Context, "user"> & { user: NonNullable<Context["user"]> };
+import type { BillLineItemRow, BillRow, Bundle, HydratedBill, PaymentRow } from "./types";
 
-export type BillRow = typeof bills.$inferSelect;
-export type BillLineItemRow = typeof billLineItems.$inferSelect;
-export type PaymentRow = typeof payments.$inferSelect;
-
-export type Bundle = {
-  bill: BillRow;
-  lineItems: BillLineItemRow[];
-  payment: PaymentRow | null;
-  approverName: string | null;
-};
-
-// Single canonical contract for FE: every `getById` and lifecycle mutation
-// returns this shape so the FE never re-derives availableEvents / missingPaths.
-// Built inline (never via `createCaller`) per the @trpc/server#server-side-calls
-// skill — invoking createCaller inside a procedure re-runs middleware and
-// re-validates input, which is the wrong pattern.
-export type HydratedBill = {
-  bill: BillRow;
-  lineItems: BillLineItemRow[];
-  payment: PaymentRow | null;
-  availableEvents: ReturnType<typeof availableEvents>;
-  missingPaths: string[];
-  approverName: string | null;
-};
-
-// Auth helpers — load the bill first, then check. Can't run as middleware
-// because the bill row drives the check (creator vs approver).
 export function assertCreator(bill: BillRow, userId: string): void {
   if (bill.createdBy !== userId) {
     throw new TRPCError({
@@ -65,15 +34,15 @@ export function assertApprover(bill: BillRow, userId: string): void {
   }
 }
 
-// Derive the caller's role(s) on a given bill. Mirrors the predicates in
-// `assertCreator` / `assertApprover` so the action ribbon is filtered by the
-// same rules the lifecycle mutations enforce.
-//
-// Returns a Set so a self-approved bill (`createdBy === approverId`) holds
-// both roles — the action ribbon shows the union of creator + approver
-// actions, preserving the spec's "Self-approved" demo flow. An empty set
-// means the caller is neither (a third-party reader); they get an empty
-// available-events list.
+export function assertCreatorOrApprover(bill: BillRow, userId: string): void {
+  if (bill.createdBy !== userId && bill.approverId !== userId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "only the bill creator or approver can perform this action",
+    });
+  }
+}
+
 export function actorRoles(bill: BillRow, userId: string): ActorRoles {
   const roles = new Set<"creator" | "approver">();
   if (bill.createdBy === userId) roles.add("creator");
@@ -109,12 +78,7 @@ export async function fetchApproverName(approverId: string): Promise<string | nu
   return row?.name ?? null;
 }
 
-// Pre-flight FK existence checks. The bills table has notNull text FKs to
-// `vendors.id` and `user.id`; passing a non-empty but unknown id sails past
-// the Zod required-text refinement and hits the Postgres FK constraint as a
-// generic Error. The errorFormatter masks that to "Internal server error" in
-// prod, so a typoed vendor id becomes a 500 to the client. Pre-check here so
-// it surfaces as a normal 4xx instead.
+// Pre-check FKs so bad ids surface as 4xx, not masked 500s from the DB constraint.
 export async function assertVendorExists(vendorId: string): Promise<void> {
   const [row] = await db
     .select({ id: vendors.id })
@@ -133,10 +97,6 @@ export async function assertApproverExists(approverId: string): Promise<void> {
   }
 }
 
-// Loads bill + line items + most-recent payment in three queries (drizzle's
-// relational query API would collapse to one but returns nested rows that
-// are awkward to feed back into hydrate's flat shape — three short queries
-// are easier to read and the seed data is small).
 export async function loadBundle(billId: string): Promise<Bundle> {
   const [bill] = await db.select().from(bills).where(eq(bills.id, billId)).limit(1);
   if (!bill) {
@@ -156,22 +116,6 @@ export async function loadBundle(billId: string): Promise<Bundle> {
   const approverName = await fetchApproverName(bill.approverId);
   return { bill, lineItems, payment: payment ?? null, approverName };
 }
-
-// Maps attemptTransition's failure variants onto TRPCError. After the
-// paid-only CANCEL_PAYMENT rework no event in the machine is a self-action,
-// so `ok: true` always implies a real status change. The caller is still
-// expected to handle nextStatus === current defensively (the lifecycle
-// factory does, by skipping both the bills UPDATE and any side effect).
-//
-// `lineItems` is widened to "the minimum readiness shape" so the update
-// mutation can pass a mix of fresh inputs (no id/billId/timestamps) and
-// persisted rows. derivedReadiness/missingPaths only inspect
-// description/amount/position, so extra columns are ignored.
-export type ReadinessLineItem = {
-  description: string;
-  amount: string;
-  position: number;
-};
 
 export function transitionOrThrow(
   current: BillStatus,
