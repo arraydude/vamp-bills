@@ -112,6 +112,22 @@ export function useArchiveBill(opts?: MutationCallbacks) {
   return useLifecycleMutation("archive", "Bill archived", opts);
 }
 
+export type ExtractFromInvoiceResult = RouterOutputs["bills"]["extractFromInvoice"];
+
+export function useExtractFromInvoice(opts?: MutationCallbacks<ExtractFromInvoiceResult>) {
+  const trpc = useTRPC();
+
+  return useMutation(
+    trpc.bills.extractFromInvoice.mutationOptions({
+      onSuccess: (data) => opts?.onSuccess?.(data),
+      onError: (error) => {
+        toast.error("Failed to extract invoice data");
+        opts?.onError?.(error);
+      },
+    }),
+  );
+}
+
 type ImportCsvResult = RouterOutputs["bills"]["importCsv"];
 
 export function usePreviewCsv(opts?: MutationCallbacks<ImportCsvResult>) {
