@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { extractInvoiceFields } from "@vamp-bills/backend/ai/extract-invoice.ts";
 import { billLineItems, bills, payments, vendors } from "@vamp-bills/backend/db/app-schema.ts";
 import { user } from "@vamp-bills/backend/db/auth-schema.ts";
 import { db } from "@vamp-bills/backend/db/client.ts";
@@ -10,6 +11,7 @@ import {
 } from "@vamp-bills/backend/domain/bill/schemas.ts";
 import { type BillStatus, billStatusSchema } from "@vamp-bills/backend/domain/bill/status.ts";
 import { derivedReadiness } from "@vamp-bills/backend/domain/bill/transitions.ts";
+import { env } from "@vamp-bills/backend/env.ts";
 import { GuardFailedError } from "@vamp-bills/backend/trpc/errors.ts";
 import { and, count, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -698,7 +700,6 @@ export async function extractFromInvoice({
 }: {
   input: ExtractFromInvoiceInput;
 }): Promise<InvoiceExtractionResult> {
-  const { env } = await import("@vamp-bills/backend/env.ts");
   if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -706,7 +707,6 @@ export async function extractFromInvoice({
     });
   }
 
-  const { extractInvoiceFields } = await import("@vamp-bills/backend/ai/extract-invoice.ts");
   const extracted = await extractInvoiceFields({
     base64: input.base64,
     mimeType: input.mimeType,
