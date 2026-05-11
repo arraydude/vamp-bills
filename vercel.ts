@@ -11,7 +11,8 @@ export const config: VercelConfig = {
   ],
   functions: {
     "api/index.ts": {
-      includeFiles: "packages/backend/{src,drizzle,node_modules}/**",
+      includeFiles:
+        "{packages/backend/{src,drizzle,node_modules}/**,node_modules/.pnpm/*/node_modules/**}",
     },
   },
 };
