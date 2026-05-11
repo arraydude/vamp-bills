@@ -1,4 +1,4 @@
-import { IconScan } from "@tabler/icons-react";
+import { IconInfoCircle, IconScan } from "@tabler/icons-react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -232,10 +232,13 @@ export function BillPage({ bill }: BillPageProps) {
                 />
               )}
 
-              {!isNew && bill.bill.createdBy !== userId && bill.bill.approverId !== userId && (
-                <Alert>
+              {!isNew && bill.bill.createdBy !== userId && (
+                <Alert variant="warning">
+                  <IconInfoCircle />
                   <AlertDescription>
-                    Only creators or approvers can make changes to this bill.
+                    {bill.bill.approverId === userId
+                      ? "You are the approver of this bill. Only the creator can edit or archive it."
+                      : "Only creators or approvers can make changes to this bill."}
                   </AlertDescription>
                 </Alert>
               )}
