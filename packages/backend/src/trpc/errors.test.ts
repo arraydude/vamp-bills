@@ -3,8 +3,8 @@ import type { DefaultErrorShape } from "@trpc/server/unstable-core-do-not-import
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { GuardFailedError } from "./errors.ts";
-import { formatError } from "./trpc.ts";
+import { GuardFailedError } from "./errors";
+import { formatError } from "./trpc";
 
 // Pin the FE error contract against the *actual* exported `formatError` from
 // trpc.ts (not a duplicated copy). A regression in the masking branch or the

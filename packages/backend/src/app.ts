@@ -2,9 +2,9 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import express from "express";
-import { auth } from "./auth.ts";
-import { createContext } from "./trpc/context.ts";
-import { appRouter } from "./trpc/router.ts";
+import { auth } from "./auth";
+import { createContext } from "./trpc/context";
+import { appRouter } from "./trpc/router";
 
 export function createApp() {
   const app = express();

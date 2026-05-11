@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import type { BillEvent, BillEventType } from "./events.ts";
+import type { BillEvent, BillEventType } from "./events";
 import {
   insertBillSchema,
   insertLineItemSchema,
   isReady,
   missingPaths,
   readyBillSchema,
-} from "./schemas.ts";
-import { BILL_STATUSES } from "./status.ts";
+} from "./schemas";
+import { BILL_STATUSES } from "./status";
 import {
   attemptTransition,
   availableEvents,
   derivedReadiness,
   type TransitionDerived,
-} from "./transitions.ts";
+} from "./transitions";
 
 const READY: TransitionDerived = { isReady: true };
 const NOT_READY: TransitionDerived = { isReady: false };

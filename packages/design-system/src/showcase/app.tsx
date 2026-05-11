@@ -35,7 +35,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { toast } from "sonner";
 
-import { usePath } from "./use-path.ts";
+import { usePath } from "./use-path";
 
 const BILLS = [
   { vendor: "Acme Inc.", invoice: "INV-001", status: "Awaiting approval", amount: "$1,240.00" },

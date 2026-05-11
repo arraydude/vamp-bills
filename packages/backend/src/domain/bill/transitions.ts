@@ -1,9 +1,9 @@
 import { getNextTransitions, transition as runTransition } from "xstate";
 
-import type { BillEvent, BillEventType } from "./events.ts";
-import { type BillMachineContext, billMachine } from "./machine.ts";
-import { isReady } from "./schemas.ts";
-import type { BillStatus } from "./status.ts";
+import type { BillEvent, BillEventType } from "./events";
+import { type BillMachineContext, billMachine } from "./machine";
+import { isReady } from "./schemas";
+import type { BillStatus } from "./status";
 
 export type TransitionDerived = BillMachineContext;
 

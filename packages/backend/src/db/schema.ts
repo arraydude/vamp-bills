@@ -1,2 +1,2 @@
-export * from "./app-schema.ts";
-export * from "./auth-schema.ts";
+export * from "./app-schema";
+export * from "./auth-schema";

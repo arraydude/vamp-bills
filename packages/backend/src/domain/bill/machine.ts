@@ -1,7 +1,7 @@
 import { type SnapshotFrom, setup } from "xstate";
 
-import type { BillEvent } from "./events.ts";
-import type { BillStatus } from "./status.ts";
+import type { BillEvent } from "./events";
+import type { BillStatus } from "./status";
 
 export type BillMachineContext = {
   isReady: boolean;
