@@ -13,7 +13,9 @@ A Bill Pay-style accounts payable demo, modeled on Ramp Bill Pay.
 
 Walk through the app in this order to see everything:
 
-1. **Sign up** with email + password
+> **Demo accounts** — skip signup with `test@example.com` or `john@doe.com` (password: `password123` for both). Existing bills and vendors are already seeded.
+
+1. **Sign up** with email + password (or use a demo account above)
 2. **Create a vendor** (name + email) — vendors are required on every bill
 3. **Create a bill** — pick your method:
    - **Manual:** fill the form by hand
